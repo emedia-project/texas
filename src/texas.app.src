@@ -1,0 +1,12 @@
+{application, texas, [
+  {description, "An ORM for Paris"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications, [
+    kernel,
+    stdlib,
+    lager
+  ]},
+  {mod, {}},
+  {env, []}
+]}.
