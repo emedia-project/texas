@@ -16,7 +16,7 @@
     }).
 
 start() ->
-  ok = application:ensure_all_started(lager).
+  {ok, _} = application:ensure_all_started(lager).
 
 connect(URI) -> 
   case texas_uri:parse(URI) of
