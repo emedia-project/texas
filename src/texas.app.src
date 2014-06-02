@@ -7,6 +7,6 @@
     stdlib,
     lager
   ]},
-  {mod, {texas_app, []}},
+  {mod, {}},
   {env, []}
 ]}.

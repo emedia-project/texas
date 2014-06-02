@@ -1,5 +1,6 @@
 -module(texas).
 
+-export([start/0]).
 -export([connect/1, close/1, find/4, insert/3, update/4, delete/3, create_table/2]).
 
 -record(texas, {
@@ -13,6 +14,9 @@
     connection_string,
     conn
     }).
+
+start() ->
+  ok = application:ensure_started(lager).
 
 connect(URI) -> 
   case texas_uri:parse(URI) of
