@@ -37,7 +37,7 @@ connect(URI) ->
             connection_string = URI,
             conn = Conn
             };
-        E -> E
+        _ -> {error, connection_failed}
       end;
     E -> E
   end.

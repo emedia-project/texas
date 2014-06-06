@@ -18,8 +18,8 @@ A simple ORM for [paris](https://github.com/emedia-project/paris) -- But not onl
 ## Drivers
 
 * sqlite : https://github.com/emedia-project/texas_sqlite
-* pgsql : TODO
-* mysql : TODO
+* PostgreSQL : https://github.com/emedia-project/texas_pgsql
+* MySQL : TODO
 
 ## Usage
 
