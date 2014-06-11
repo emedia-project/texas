@@ -7,7 +7,8 @@ main() ->
   texas_sqlite:start(),
 
   Conn = texas:connect("sqlite:///sample.db"),
-  texas:create_table(Conn, users),
+  T1 = texas:create_table(Conn, users),
+  io:format("~p~n", [T1]),
   texas:create_table(Conn, pipo),
 
   % stateful modules.

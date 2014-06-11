@@ -15,9 +15,25 @@
     conn
     }).
 
+-type connection_string() :: string().
+-type connection() :: #texas{}.
+-type params() :: [any()].
+-type table() :: atom().
+-type func() :: atom().
+-type data() :: any().
+-type type() :: first | all.
+-type clause() :: any(). % TODO
+
+-spec start() -> any().
 start() ->
   {ok, _} = application:ensure_all_started(lager).
 
+% @doc
+% Connect to the database.
+%
+% The <em>connection_string()<em> depends on the driver.
+% @end
+-spec connect(connection_string()) -> connection().
 connect(URI) -> 
   case texas_uri:parse(URI) of
     {ok, {Scheme, User, Password, Server, Port, Path, _, _}} ->
@@ -42,25 +58,43 @@ connect(URI) ->
     E -> E
   end.
 
+-spec call(connection(), func()) -> any().
 call(Conn, Function) ->
   call(Conn, Function, []).
+-spec call(connection(), func(), params()) -> any().
 call(Conn, Function, Params) ->
   erlang:apply(Conn#texas.module, Function, [Conn#texas.conn] ++ Params).
 
+% @doc
+% Create the given table (if not exists)
+% @end
+-spec create_table(connection(), table()) -> any().
 create_table(Conn, Table) ->
   call(Conn, create_table, [Table]).
 
+% @hidden
+-spec insert(connection(), table(), data()) -> data().
 insert(Conn, Table, Record) ->
   call(Conn, insert, [Table, Record]).
 
+% @hidden
+-spec find(connection(), table(), type(), clause()) -> data() | [data()].
 find(Conn, Table, Type, Clause) ->
   call(Conn, select, [Table, Type, Clause]).
 
+% @hidden
+-spec update(connection(), table(), data(), data()) -> any().
 update(Conn, Table, UpdateData, Record) ->
   call(Conn, update, [Table, Record, UpdateData]).
 
+% @hidden
+-spec delete(connection(), table(), data()) -> any().
 delete(Conn, Table, Record) ->
   call(Conn, delete, [Table, Record]).
 
+% @doc
+% Close the connection to the database
+% @end
+-spec close(connection()) -> any().
 close(Conn) ->
   call(Conn, close).

@@ -24,8 +24,8 @@ A simple ORM for [paris](https://github.com/emedia-project/paris) -- But not onl
 ## Usage
 
 ```erlang
-application:start(texas),
-application:start(texas_sqlite), % Start driver
+texas:start(),
+texas_sqlite:start(), % Start driver
 
 % Initialize connection
 Conn = texas:connect("sqlite:///sample.db"),
