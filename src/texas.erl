@@ -31,9 +31,9 @@ start() ->
 % @doc
 % Connect to the database.
 %
-% The <em>connection_string()<em> depends on the driver.
+% The <em>connection_string()</em> depends on the driver.
 % @end
--spec connect(connection_string()) -> connection().
+-spec connect(connection_string()) -> connection() | {error, any()}.
 connect(URI) -> 
   case texas_uri:parse(URI) of
     {ok, {Scheme, User, Password, Server, Port, Path, _, _}} ->
