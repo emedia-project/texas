@@ -1,6 +1,6 @@
 # Texas
 
-A simple ORM for [paris](https://github.com/emedia-project/paris) -- But not only!
+A simple ORM for [paris](https://github.com/emedia-project/paris)
 
 ## Create 
 
@@ -19,7 +19,7 @@ A simple ORM for [paris](https://github.com/emedia-project/paris) -- But not onl
 
 * sqlite : https://github.com/emedia-project/texas_sqlite
 * PostgreSQL : https://github.com/emedia-project/texas_pgsql
-* MySQL : TODO
+* MySQL : https://github.com/emedia-project/texas_mysql
 
 ## Usage
 

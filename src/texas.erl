@@ -1,7 +1,16 @@
 -module(texas).
 
 -export([start/0]).
--export([connect/1, close/1, find/4, insert/3, update/4, delete/3, create_table/2]).
+-export([
+  connect/1, 
+  connect/2, 
+  close/1, 
+  find/4, 
+  insert/3, 
+  update/4, 
+  delete/3, 
+  create_table/2
+]).
 
 -record(texas, {
     driver,
@@ -35,11 +44,14 @@ start() ->
 % @end
 -spec connect(connection_string()) -> connection() | {error, any()}.
 connect(URI) -> 
+  connect(URI, []).
+-spec connect(connection_string(), [tuple()]) -> connection() | {error, any()}.
+connect(URI, Options) -> 
   case texas_uri:parse(URI) of
     {ok, {Scheme, User, Password, Server, Port, Path, _, _}} ->
       Module = list_to_atom("texas_" ++ Scheme),
       case erlang:apply(Module, connect, [
-            User, Password, Server, Port, Path
+            User, Password, Server, Port, Path, Options
             ]) of
         {ok, Conn} -> 
           #texas{

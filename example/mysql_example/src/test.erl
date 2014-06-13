@@ -1,15 +1,16 @@
 -module(test).
 
--export([main/0]).
+-export([main/2]).
 
-main() ->
+main(DBUser, Pass) ->
   texas:start(),
-  texas_sqlite:start(),
+  texas_mysql:start(),
 
-  Conn = texas:connect("sqlite:///sample.db"),
+  Conn = texas:connect("mysql://" ++ DBUser ++ ":" ++ Pass ++ "@localhost:3306/texas"),
   T1 = texas:create_table(Conn, users),
-  io:format("~p~n", [T1]),
-  texas:create_table(Conn, pipo),
+  io:format("--> ~p~n", [T1]),
+  T2 = texas:create_table(Conn, pipo),
+  io:format("--> ~p~n", [T2]),
 
   % stateful modules.
 
@@ -17,8 +18,7 @@ main() ->
   User1 = User:title("Monsieur"),
   User2 = User1:insert(Conn),
   io:format("-> ~p~n", [User2]),
-  % TODO -- User2:id(),
-  
+   
   Pipo = pipo:new([{key, "Hello"}, {value, "World"}]),
   Pipo1 = Pipo:insert(Conn),
   io:format("#> ~p~n", [Pipo1]),
@@ -52,11 +52,11 @@ main() ->
   % User2:delete(Conn),
   X = User5:delete(Conn),
   io:format("-> ~p~n", [X]),
-
+ 
   User7 = users:find(Conn, all, []),
   io:format("=> ~p~n", [User7]),
 
-  User8 = users:find(Conn, first, [{where, "name = :name", [{name, "%'; delete from users;"}]}]),
+  User8 = users:find(Conn, first, [{where, "name = :name", [{name, "%\"; delete from users;"}]}]),
   io:format("=> ~p~n", [User8]),
-
+ 
   texas:close(Conn).

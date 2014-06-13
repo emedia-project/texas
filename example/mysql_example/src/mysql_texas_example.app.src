@@ -1,0 +1,12 @@
+{application, mysql_texas_example,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, {}},
+  {env, []}
+ ]}.

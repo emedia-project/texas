@@ -56,5 +56,7 @@ main(DBUser, Pass) ->
   User7 = users:find(Conn, all, []),
   io:format("=> ~p~n", [User7]),
 
+  User8 = users:find(Conn, all, [{where, "name = :name", [{name, "%'; delete from users;"}]}]),
+  io:format("=> ~p~n", [User8]),
 
   texas:close(Conn).
