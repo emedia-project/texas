@@ -7,8 +7,10 @@ main() ->
   texas_sqlite:start(),
 
   Conn = texas:connect("sqlite:///sample.db"),
+  io:format("~p~n", [Conn]),
   T1 = texas:create_table(Conn, users),
   io:format("~p~n", [T1]),
+  texas:create_table(Conn, address),
   texas:create_table(Conn, pipo),
 
   % stateful modules.
@@ -58,5 +60,16 @@ main() ->
 
   User8 = users:find(Conn, first, [{where, "name = :name", [{name, "%'; delete from users;"}]}]),
   io:format("=> ~p~n", [User8]),
+
+  Address = address:new([{street, "1 avenue des Champs Elysees"}, {city, "Paris"}]),
+  Address1 = Address:insert(Conn),
+  io:format("Address1 -> ~p~n", [Address1]),
+
+  User9 = users:new([{name, "John"}, {mail, "john@doe.com"}]),
+  User10 = User9:address(Address1),
+  io:format("-> ~p~n", [User10]),
+  Address2 = User10:address(Conn),
+  io:format("Address2 -> ~p~n", [Address2]),
+
 
   texas:close(Conn).

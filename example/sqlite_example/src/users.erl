@@ -17,4 +17,5 @@
 -field({title,      [{type, string},  {not_null, true},     {default, "M."} ]}).
 -field({address_id, [{type, id},      {ref, address}                        ]}).
 
+-index([id, name, mail]).
 

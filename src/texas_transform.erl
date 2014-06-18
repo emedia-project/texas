@@ -8,7 +8,7 @@ parse_transform(AST, Options) ->
 build(PT_AST) ->
   Fields = pt_helpers:fields(PT_AST),
   TableName = pt_helpers:module_name(PT_AST),
-  io:format("=== Generate module for table ~s~n", [TableName]),
+  io:format("Generate module for table ~s~n", [TableName]),
   PT_AST1 = build_record(PT_AST, TableName, Fields),
   PT_AST2 = build_common_functions(PT_AST1, Fields),
   PT_AST3 = build_type_functions(PT_AST2, Fields),
@@ -18,7 +18,9 @@ build(PT_AST) ->
   PT_AST7 = build_set_functions(PT_AST6, TableName, Fields),
   PT_AST8 = build_crud_functions(PT_AST7, TableName),
   PT_AST9 = build_tablepkid_function(PT_AST8, Fields),
-  PT_AST9.
+  PT_ASTA = build_indexes_function(PT_AST9),
+  PT_ASTB = build_refs_functions(PT_ASTA, TableName, Fields),
+  PT_ASTB.
 
 build_record(PT_AST, TableName, Fields) ->
   FieldsDef = lists:map(fun({Name, Options}) ->
@@ -178,7 +180,84 @@ build_tablepkid_function(PT_AST, Fields) ->
     PT_AST, export, table_pk_id, 
     pt_helpers:build_clause([], pt_helpers:build_tuple(Resp))).
 
+build_indexes_function(PT_AST) ->
+  pt_helpers:add_function(
+    PT_AST, export, indexes, 
+    pt_helpers:build_clause([], pt_helpers:build_list(
+        pt_helpers:directive(PT_AST, index)))).
+
+build_refs_functions(PT_AST, TableName, Fields) ->
+  Refs = lists:filter(fun({_, Desc}) ->
+        lists:any(fun({E, _}) -> E =:= ref end, Desc)
+    end, Fields),
+  case length(Refs) of
+    0 -> PT_AST;
+    _ -> lists:foldl(fun(Ref, PT_AST1) ->
+            build_ref_function(PT_AST1, TableName, Ref)
+        end, PT_AST, Refs)
+  end.
+
 %% - 
+
+% Entity:ref(Conn)
+build_ref_function(PT_AST, TableName, {FieldName, Desc}) ->
+  case lists:keyfind(ref, 1, Desc) of
+    false -> PT_AST;
+    {ref, Table} -> 
+      STable = atom_to_list(Table),
+      case string:tokens(atom_to_list(FieldName), "_") of
+        [STable|Rest] -> 
+          Field = list_to_atom(string:join(Rest, "_")),
+          % Table:find(Conn, all, [{where, "Field = :value", [{value, Self:FieldName()}]}]),
+          Conn = pt_helpers:build_var('Conn'),
+          Record = pt_helpers:build_var('Rec'),
+          Ref = pt_helpers:build_var('Ref'),
+          SetRefGuard = pt_helpers:build_guard(
+              pt_helpers:build_op(
+                '=:=', 
+                pt_helpers:build_call(element, [pt_helpers:build_integer(1), Ref]), 
+                pt_helpers:build_atom(Table))
+              ),
+          SetRefClause = pt_helpers:build_clause(
+              [Ref, Record],
+              SetRefGuard,
+              pt_helpers:build_call(TableName, FieldName, [
+                  pt_helpers:build_call(Table, Field, [Ref]),
+                  Record
+                  ])
+              ),
+          GetRefGuard = pt_helpers:build_guard(
+              pt_helpers:build_op(
+                '=:=', 
+                pt_helpers:build_call(element, [pt_helpers:build_integer(1), Conn]), 
+                pt_helpers:build_atom(texas))
+              ),
+          GetCallBody = pt_helpers:build_list([
+                pt_helpers:build_tuple({
+                    pt_helpers:build_atom(where),
+                    pt_helpers:build_string(atom_to_list(Field) ++ " = :value"),
+                    pt_helpers:build_list([
+                        pt_helpers:build_tuple({
+                            pt_helpers:build_atom(value),
+                            pt_helpers:build_call(TableName, FieldName, [Record])
+                            })
+                        ])
+                    })
+                ]),
+          GetRefClause = pt_helpers:build_clause(
+              [Conn, Record],
+              GetRefGuard,
+              pt_helpers:build_call(texas, find, [
+                  Conn,
+                  pt_helpers:build_atom(Table),
+                  pt_helpers:build_atom(all),
+                  GetCallBody
+                  ])
+              ),
+          pt_helpers:add_function(PT_AST, export, Table, [SetRefClause, GetRefClause]);
+        _ -> PT_AST
+      end
+  end.
 
 build_common_function(PT_AST, Fields, Option, Default) ->
   Clauses = build_common_clauses(Fields, Option, Default),
