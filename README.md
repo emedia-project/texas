@@ -15,6 +15,18 @@ A simple ORM for [paris](https://github.com/emedia-project/paris)
 -field({address_id, [{type, integer}, {ref, address}                        ]}).
 ```
 
+and
+
+```erlang
+-module(address).
+-compile([{parse_transform, texas_transform}]).
+
+-field({id,         [{type, id},      {autoincrement, true}]}).
+-field({street,     [{type, string}                        ]}).
+-field({city,       [{type, string}                        ]}).
+-field({zipcode,    [{type, string}                        ]}).
+```
+
 ## Drivers
 
 * sqlite : https://github.com/emedia-project/texas_sqlite
@@ -30,20 +42,29 @@ texas_sqlite:start(), % Start driver
 % Initialize connection
 Conn = texas:connect("sqlite:///sample.db"),
 
-% Create table (if not exist)
+% Create tables (if not exist)
 ok = texas:create_table(Conn, person),
+ok = texas:create_table(Conn, address),
+
+% Create a new address
+Address = address:new([{street, "21 jump street"}, {city, "New Orleans"}, {zip, "70112"}]).
+Address1 = Address:insert(Conn).
 
 % Create a new Person and insert it
 Person = person:new([{name, "Greg"}, {mail, "gregoire.lejeune"}]),
-Person1 = Person:insert(Conn),
-io:format("person created with ID #~p~n", [Person1:id()]),
+Person1 = Person:address(Address1), % You can't add this using person:new/1 -- sorry
+Person2 = Person:insert(Conn),
+io:format("person created with ID #~p~n", [Person2:id()]),
 
 % Find
-Person2 = person:find(Conn, first, [{where, "name = :name", [{name, "Greg"}]}]),
+Person3 = person:find(Conn, first, [{where, "name = :name", [{name, "Greg"}]}]),
+Address2 = Person3:address(Conn),
+% or
+Address_id = Person3:address_id(),
 
 % Update
-Person3 = Person2:update(Conn, [{name, "Bob"]]),
+Person4 = Person3:update(Conn, [{name, "Bob"]]),
 
 % Delete
-ok = Person3:delete(Conn).
+ok = Person4:delete(Conn).
 ```
