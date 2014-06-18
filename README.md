@@ -52,7 +52,7 @@ Address1 = Address:insert(Conn).
 
 % Create a new Person and insert it
 Person = person:new([{name, "Greg"}, {mail, "gregoire.lejeune"}]),
-Person1 = Person:address(Address1), % You can't add this using person:new/1 -- sorry
+Person1 = Person:address(Address1), 
 Person2 = Person:insert(Conn),
 io:format("person created with ID #~p~n", [Person2:id()]),
 

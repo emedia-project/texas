@@ -65,8 +65,8 @@ main() ->
   Address1 = Address:insert(Conn),
   io:format("Address1 -> ~p~n", [Address1]),
 
-  User9 = users:new([{name, "John"}, {mail, "john@doe.com"}]),
-  User10 = User9:address(Address1),
+  User9 = users:new([{name, "John"}, {mail, "john@doe.com"}, {address, Address1}]),
+  User10 = User9:insert(Conn),
   io:format("-> ~p~n", [User10]),
   Address2 = User10:address(Conn),
   io:format("Address2 -> ~p~n", [Address2]),
