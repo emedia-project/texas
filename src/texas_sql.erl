@@ -4,7 +4,8 @@
   record_to_where_clause/2, 
   record_to_where_clause/3,
   to_sql_string/2,
-  to_sql_string/3
+  to_sql_string/3,
+  to_sql_field/2
   ]).
 
 record_to_where_clause(Table, Record) ->
@@ -25,6 +26,12 @@ to_sql_string(Value, SepChar, QuoteChar) when is_list(Value) ->
   quote(Value, SepChar, QuoteChar);
 to_sql_string(Value, _, _) ->
   io_lib:format("~p", [Value]).
+
+to_sql_field(Value, SepChar) ->
+  case SepChar of
+    none -> io_lib:format("~p", [Value]);
+    _ -> io_lib:format("~c~p~c", [SepChar, Value, SepChar])
+  end.
 
 quote(Str, SepChar, QuoteChar) ->
     quote_(Str, SepChar, QuoteChar, [SepChar]).

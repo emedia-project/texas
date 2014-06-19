@@ -47,24 +47,24 @@ ok = texas:create_table(Conn, person),
 ok = texas:create_table(Conn, address),
 
 % Create a new address
-Address = address:new([{street, "21 jump street"}, {city, "New Orleans"}, {zip, "70112"}]).
-Address1 = Address:insert(Conn).
+Address = address:new(Conn, [{street, "21 jump street"}, {city, "New Orleans"}, {zip, "70112"}]).
+Address1 = Address:insert().
 
 % Create a new Person and insert it
-Person = person:new([{name, "Greg"}, {mail, "gregoire.lejeune"}]),
+Person = person:new(Conn, [{name, "Greg"}, {mail, "gregoire.lejeune"}]),
 Person1 = Person:address(Address1), 
-Person2 = Person:insert(Conn),
+Person2 = Person:insert(),
 io:format("person created with ID #~p~n", [Person2:id()]),
 
 % Find
 Person3 = person:find(Conn, first, [{where, "name = :name", [{name, "Greg"}]}]),
-Address2 = Person3:address(Conn),
+Address2 = Person3:address(),
 % or
 Address_id = Person3:address_id(),
 
 % Update
-Person4 = Person3:update(Conn, [{name, "Bob"]]),
+Person4 = Person3:update([{name, "Bob"]]),
 
 % Delete
-ok = Person4:delete(Conn).
+ok = Person4:delete().
 ```

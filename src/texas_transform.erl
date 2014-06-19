@@ -20,7 +20,8 @@ build(PT_AST) ->
   PT_AST9 = build_tablepkid_function(PT_AST8, Fields),
   PT_ASTA = build_indexes_function(PT_AST9),
   PT_ASTB = build_refs_functions(PT_ASTA, TableName, Fields),
-  PT_ASTB.
+  PT_ASTC = build_to_keylist_function(PT_ASTB, TableName),
+  PT_ASTC.
 
 build_record(PT_AST, TableName, Fields) ->
   FieldsDef = lists:map(fun({Name, Options}) ->
@@ -29,7 +30,7 @@ build_record(PT_AST, TableName, Fields) ->
             _ -> throw("No type found for field " ++ atom_to_list(Name) ++ " in table " ++ atom_to_list(TableName))
           end,
           {Name, Type}
-      end, Fields),
+      end, Fields) ++ [{'__texas_conn', term}],
   pt_helpers:add_record(PT_AST, TableName, FieldsDef).
 
 build_common_functions(PT_AST, Fields) ->
@@ -63,7 +64,13 @@ build_fields_function(PT_AST, Fields) ->
   pt_helpers:add_function(PT_AST, export, fields, Clause).
 
 build_new_functions(PT_AST, TableName) ->
-  Clause0 = pt_helpers:build_clause([], pt_helpers:build_record(TableName)),
+  Conn = pt_helpers:build_var('Conn'),
+  Clause0 = pt_helpers:build_clause(
+      [Conn], 
+      pt_helpers:build_record(
+        TableName,
+        [pt_helpers:build_record_field('__texas_conn', Conn)]
+        )),
   PT_AST0 = pt_helpers:add_function(PT_AST, export, new, Clause0),
 
   L = pt_helpers:build_var('L'),
@@ -79,10 +86,10 @@ build_new_functions(PT_AST, TableName) ->
       ),
   Fun = pt_helpers:build_fun(FunClause),
   Body = [
-      pt_helpers:build_match(R, pt_helpers:build_call(new, [])),
+      pt_helpers:build_match(R, pt_helpers:build_call(new, [Conn])),
       pt_helpers:build_call(lists, foldl, [Fun, R, L])
       ],
-  Clause1 = pt_helpers:build_clause([L], [IsList], Body),
+  Clause1 = pt_helpers:build_clause([Conn, L], [IsList], Body),
   pt_helpers:add_function(PT_AST0, export, new, Clause1).
 
 build_get_functions(PT_AST, TableName, Fields) ->
@@ -136,18 +143,18 @@ build_crud_functions(PT_AST, TableName) ->
       ),
   PT_AST1 = pt_helpers:add_function(PT_AST, export, find, FindClause),
   InsertClause = pt_helpers:build_clause(
-      [Conn, Record],
+      [Record],
       pt_helpers:build_call(texas, insert, [
-          Conn,
+          pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
           Table,
           Record
           ])
       ),
   PT_AST2 = pt_helpers:add_function(PT_AST1, export, insert, InsertClause),
   UpdateClause = pt_helpers:build_clause(
-      [Conn, Arg1, Record],
+      [Arg1, Record],
       pt_helpers:build_call(texas, update, [
-          Conn,
+          pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
           Table,
           Arg1,
           Record
@@ -155,9 +162,9 @@ build_crud_functions(PT_AST, TableName) ->
       ),
   PT_AST3 = pt_helpers:add_function(PT_AST2, export, update, UpdateClause),
   DeleteClause = pt_helpers:build_clause(
-      [Conn, Record],
+      [Record],
       pt_helpers:build_call(texas, delete, [
-          Conn,
+          pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
           Table,
           Record
           ])
@@ -197,6 +204,17 @@ build_refs_functions(PT_AST, TableName, Fields) ->
         end, PT_AST, Refs)
   end.
 
+build_to_keylist_function(PT_AST, TableName) ->
+  Record = pt_helpers:build_var('Rec'),
+  ToKLClause = pt_helpers:build_clause(
+      [Record],
+      pt_helpers:build_call(texas, to_keylist, [
+          pt_helpers:build_atom(TableName),
+          Record
+          ])
+      ),
+  pt_helpers:add_function(PT_AST, export, to_keylist, ToKLClause).
+
 %% - 
 
 % Entity:ref(Conn)
@@ -208,8 +226,6 @@ build_ref_function(PT_AST, TableName, {FieldName, Desc}) ->
       case string:tokens(atom_to_list(FieldName), "_") of
         [STable|Rest] -> 
           Field = list_to_atom(string:join(Rest, "_")),
-          % Table:find(Conn, all, [{where, "Field = :value", [{value, Self:FieldName()}]}]),
-          Conn = pt_helpers:build_var('Conn'),
           Record = pt_helpers:build_var('Rec'),
           Ref = pt_helpers:build_var('Ref'),
           SetRefGuard = pt_helpers:build_guard(
@@ -226,12 +242,7 @@ build_ref_function(PT_AST, TableName, {FieldName, Desc}) ->
                   Record
                   ])
               ),
-          GetRefGuard = pt_helpers:build_guard(
-              pt_helpers:build_op(
-                '=:=', 
-                pt_helpers:build_call(element, [pt_helpers:build_integer(1), Conn]), 
-                pt_helpers:build_atom(texas))
-              ),
+          PT_AST1 = pt_helpers:add_function(PT_AST, export, Table, SetRefClause),
           GetCallBody = pt_helpers:build_list([
                 pt_helpers:build_tuple({
                     pt_helpers:build_atom(where),
@@ -245,16 +256,15 @@ build_ref_function(PT_AST, TableName, {FieldName, Desc}) ->
                     })
                 ]),
           GetRefClause = pt_helpers:build_clause(
-              [Conn, Record],
-              GetRefGuard,
+              [Record],
               pt_helpers:build_call(texas, find, [
-                  Conn,
+                  pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
                   pt_helpers:build_atom(Table),
                   pt_helpers:build_atom(all),
                   GetCallBody
                   ])
               ),
-          pt_helpers:add_function(PT_AST, export, Table, [SetRefClause, GetRefClause]);
+          pt_helpers:add_function(PT_AST1, export, Table, GetRefClause);
         _ -> PT_AST
       end
   end.

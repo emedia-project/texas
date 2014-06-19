@@ -9,7 +9,9 @@
   insert/3, 
   update/4, 
   delete/3, 
-  create_table/2
+  create_table/2,
+  connection/1,
+  to_keylist/2
 ]).
 
 -record(texas, {
@@ -75,7 +77,7 @@ call(Conn, Function) ->
   call(Conn, Function, []).
 -spec call(connection(), func(), params()) -> any().
 call(Conn, Function, Params) ->
-  erlang:apply(Conn#texas.module, Function, [Conn#texas.conn] ++ Params).
+  erlang:apply(Conn#texas.module, Function, [Conn] ++ Params).
 
 % @doc
 % Create the given table (if not exists)
@@ -97,7 +99,11 @@ find(Conn, Table, Type, Clause) ->
 % @hidden
 -spec update(connection(), table(), data(), data()) -> any().
 update(Conn, Table, UpdateData, Record) ->
-  call(Conn, update, [Table, Record, UpdateData]).
+  Data = Table:new(Conn, UpdateData),
+  RealUpdateData = lists:filter(fun({_, Value}) ->
+          Value =/= undefined
+      end, Data:to_keylist()),
+  call(Conn, update, [Table, Record, RealUpdateData]).
 
 % @hidden
 -spec delete(connection(), table(), data()) -> any().
@@ -110,3 +116,13 @@ delete(Conn, Table, Record) ->
 -spec close(connection()) -> any().
 close(Conn) ->
   call(Conn, close).
+
+-spec connection(connection()) -> any().
+connection(Conn) -> Conn#texas.conn.
+
+-spec to_keylist(atom(), data()) -> list().
+to_keylist(Table, Record) ->
+  lists:map(fun(Field) ->
+        {Field, Record:Field()}
+    end, Table:fields()).
+
