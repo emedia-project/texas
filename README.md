@@ -12,7 +12,7 @@ A simple ORM for [paris](https://github.com/emedia-project/paris)
 -field({name,       [{type, string},  {not_null, true}                      ]}).
 -field({mail,       [{type, string},  {unique, true}                        ]}).
 -field({title,      [{type, string},  {not_null, true},     {default, "M."} ]}).
--field({address_id, [{type, integer}, {ref, address}                        ]}).
+-field({live_at,    [                 {belongs_to, address}                 ]}).
 ```
 
 and
@@ -25,6 +25,7 @@ and
 -field({street,     [{type, string}                        ]}).
 -field({city,       [{type, string}                        ]}).
 -field({zipcode,    [{type, string}                        ]}).
+-field({people,     [                 {has_many, person}   ]}).
 ```
 
 ## Drivers
@@ -59,8 +60,7 @@ io:format("person created with ID #~p~n", [Person2:id()]),
 % Find
 Person3 = person:find(Conn, first, [{where, "name = :name", [{name, "Greg"}]}]),
 Address2 = Person3:address(),
-% or
-Address_id = Person3:address_id(),
+PersonsAtAddress = Address2:people(),
 
 % Update
 Person4 = Person3:update([{name, "Bob"]]),
