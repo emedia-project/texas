@@ -65,15 +65,17 @@ main() ->
   Address1 = Address:insert(),
   io:format("Address1 -> ~p~n", [Address1:to_keylist()]),
 
-  User9 = users:new(Conn, [{name, "John"}, {mail, "john@doe.com"}, {address, Address1}]),
+  User9 = users:new(Conn, [{name, "John"}, {mail, "john@doe.com"}, {live_at, Address1}]),
   User10 = User9:insert(),
   io:format("User10 -> ~p~n", [User10:to_keylist()]),
-  Address2 = User10:address(),
-  io:format("Address2 -> ~p~n", [lists:map(fun(U) -> U:to_keylist() end, Address2)]),
+  Address2 = User10:live_at(),
+  io:format("Address2 -> ~p~n", [Address2:to_keylist()]),
   Address3 = address:new(Conn, [{street, "2 rue de la paix"}, {city, "Paris"}]),
   Address4 = Address3:insert(),
   io:format("Address4 -> ~p~n", [Address4:to_keylist()]),
-  User11 = User10:update([{address, Address4}]),
+  User11 = User10:update([{live_at, Address4}]),
   io:format("User11 -> ~p~n", [lists:map(fun(U) -> U:to_keylist() end, User11)]),
+  User12 = Address4:user(),
+  io:format("User12 -> ~p~n", [lists:map(fun(U) -> U:to_keylist() end, User12)]),
 
   texas:close(Conn).

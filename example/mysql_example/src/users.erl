@@ -15,6 +15,6 @@
 -field({name,       [{type, string},  {len, 255},           {not_null, true}                 ]}).
 -field({mail,       [{type, string},  {len, 255},           {unique, true}                   ]}).
 -field({title,      [{type, string},  {len, 32},            {not_null, true},{default, "M."} ]}).
--field({address_id, [{type, id},      {ref, address}                                         ]}).
+-field({live_at,    [                 {belongs_to, address}                                  ]}).
 
 

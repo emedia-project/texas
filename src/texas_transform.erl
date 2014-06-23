@@ -6,7 +6,7 @@ parse_transform(AST, Options) ->
   pt_helpers:transform(fun build/1, AST, Options).
 
 build(PT_AST) ->
-  Fields = pt_helpers:fields(PT_AST),
+  Fields = update_fields(pt_helpers:fields(PT_AST)),
   TableName = pt_helpers:module_name(PT_AST),
   io:format("Generate module for table ~s~n", [TableName]),
   PT_AST1 = build_record(PT_AST, TableName, Fields),
@@ -19,18 +19,29 @@ build(PT_AST) ->
   PT_AST8 = build_crud_functions(PT_AST7, TableName),
   PT_AST9 = build_tablepkid_function(PT_AST8, Fields),
   PT_ASTA = build_indexes_function(PT_AST9),
-  PT_ASTB = build_refs_functions(PT_ASTA, TableName, Fields),
-  PT_ASTC = build_to_keylist_function(PT_ASTB, TableName),
-  PT_ASTC.
+  PT_ASTB = build_belongs_to_functions(PT_ASTA, TableName, Fields),
+  PT_ASTC = build_has_functions(PT_ASTB, TableName, Fields),
+  PT_ASTD = build_to_keylist_function(PT_ASTC, TableName),
+  PT_ASTD.
+
+update_fields(Fields) ->
+  lists:map(fun({Field, Options}) ->
+        case lists:keyfind(belongs_to, 1, Options) of
+          false ->
+            {Field, Options};
+          {belongs_to, _} ->
+            {list_to_atom(atom_to_list(Field) ++ "_id"),
+             merge_keylists(1, Options, [{type, id}])}
+        end
+    end, Fields).
 
 build_record(PT_AST, TableName, Fields) ->
-  FieldsDef = lists:map(fun({Name, Options}) ->
-          Type = case lists:keyfind(type, 1, Options) of
-            {type, T} -> T;
-            _ -> throw("No type found for field " ++ atom_to_list(Name) ++ " in table " ++ atom_to_list(TableName))
-          end,
-          {Name, Type}
-      end, Fields) ++ [{'__texas_conn', term}],
+  FieldsDef = lists:foldl(fun({Name, Options}, Acc) ->
+          Acc ++ case lists:keyfind(type, 1, Options) of
+            {type, Type} -> [{Name, Type}];
+            _ -> []
+          end
+      end, [], Fields) ++ [{'__texas_conn', term}],
   pt_helpers:add_record(PT_AST, TableName, FieldsDef).
 
 build_common_functions(PT_AST, Fields) ->
@@ -42,24 +53,29 @@ build_common_functions(PT_AST, Fields) ->
       {unique, {ok, false}},
       {default, {none, null}},
       {len, {none, null}},
-      {ref, {none, null}}
+      {belongs_to, {none, null}}
       ]).
 
 build_type_functions(PT_AST, Fields) ->
   Clauses = lists:foldl(fun({FieldName, Options}, Clauses) ->
-        Value = case lists:keyfind(type, 1, Options) of
-          {type, A} -> A;
-            _ -> throw("No type found for field " ++ atom_to_list(FieldName))
-        end,
-        Clauses ++ [pt_helpers:build_clause(
-            pt_helpers:build_atom(FieldName),
-            pt_helpers:build_value(Value)
-          )]
+        Clauses ++ case lists:keyfind(type, 1, Options) of
+            {type, Value} -> 
+              [pt_helpers:build_clause(
+                  pt_helpers:build_atom(FieldName),
+                  pt_helpers:build_value(Value)
+                  )];
+            _ -> []
+        end
     end, [], Fields),
   pt_helpers:add_function(PT_AST, export, type, Clauses).
 
 build_fields_function(PT_AST, Fields) ->
-  FieldsList = lists:map(fun({Name, _}) -> Name end, Fields),
+  FieldsList = lists:foldl(fun({Name, Options}, Acc) ->
+          Acc ++ case lists:keyfind(type, 1, Options) of
+            {type, _} -> [Name];
+            _ -> []
+          end
+      end, [], Fields),
   Clause = pt_helpers:build_clause([], pt_helpers:build_value(FieldsList)),
   pt_helpers:add_function(PT_AST, export, fields, Clause).
 
@@ -93,37 +109,45 @@ build_new_functions(PT_AST, TableName) ->
   pt_helpers:add_function(PT_AST0, export, new, Clause1).
 
 build_get_functions(PT_AST, TableName, Fields) ->
-  lists:foldl(fun({FieldName, _}, PT_AST1) ->
-        Clause = pt_helpers:build_clause(
-            pt_helpers:build_var('R'),
-            pt_helpers:build_get_record_field('R', TableName, FieldName)
-            ),
-        pt_helpers:add_function(PT_AST1, export, FieldName, Clause)
+  lists:foldl(fun({FieldName, Options}, PT_AST1) ->
+        case lists:keyfind(type, 1, Options) of
+          {type, _} ->
+            Clause = pt_helpers:build_clause(
+                pt_helpers:build_var('R'),
+                pt_helpers:build_get_record_field('R', TableName, FieldName)
+                ),
+            pt_helpers:add_function(PT_AST1, export, FieldName, Clause);
+          _ -> PT_AST1
+        end
     end, PT_AST, Fields).
   
 build_set_functions(PT_AST, TableName, Fields) ->
-  lists:foldl(fun({FieldName, _}, PT_AST1) ->
-        V = pt_helpers:build_var('V'),
-        Type = pt_helpers:build_var('Type'),
-        TypeCall = pt_helpers:build_call(type, [pt_helpers:build_atom(FieldName)]),
-        TypeMatch = pt_helpers:build_match(Type, TypeCall),
-        ToCall = pt_helpers:build_call(texas_type, to, [Type, V]),
-        V1 = pt_helpers:build_var('V1'),
-        ToV1 = pt_helpers:build_match(V1, ToCall),
-        Field = pt_helpers:build_record_field(FieldName, V1),
-        Record = pt_helpers:build_record('R', TableName, [Field]),
-        R = pt_helpers:build_var('R'),
-        Clause = [
-            pt_helpers:build_clause(
-              [pt_helpers:build_atom(undefined), R],
-              [R]
-              ),
-            pt_helpers:build_clause(
-              [V, R],
-              [TypeMatch, ToV1, Record]
-              )
-            ],
-        pt_helpers:add_function(PT_AST1, export, FieldName, Clause)
+  lists:foldl(fun({FieldName, Options}, PT_AST1) ->
+        case lists:keyfind(type, 1, Options) of
+          {type, _} ->
+            V = pt_helpers:build_var('V'),
+            Type = pt_helpers:build_var('Type'),
+            TypeCall = pt_helpers:build_call(type, [pt_helpers:build_atom(FieldName)]),
+            TypeMatch = pt_helpers:build_match(Type, TypeCall),
+            ToCall = pt_helpers:build_call(texas_type, to, [Type, V]),
+            V1 = pt_helpers:build_var('V1'),
+            ToV1 = pt_helpers:build_match(V1, ToCall),
+            Field = pt_helpers:build_record_field(FieldName, V1),
+            Record = pt_helpers:build_record('R', TableName, [Field]),
+            R = pt_helpers:build_var('R'),
+            Clause = [
+                pt_helpers:build_clause(
+                  [pt_helpers:build_atom(undefined), R],
+                  [R]
+                  ),
+                pt_helpers:build_clause(
+                  [V, R],
+                  [TypeMatch, ToV1, Record]
+                  )
+                ],
+            pt_helpers:add_function(PT_AST1, export, FieldName, Clause);
+          _ -> PT_AST1
+        end
     end, PT_AST, Fields).
 
 build_crud_functions(PT_AST, TableName) ->
@@ -193,16 +217,33 @@ build_indexes_function(PT_AST) ->
     pt_helpers:build_clause([], pt_helpers:build_list(
         pt_helpers:directive(PT_AST, index)))).
 
-build_refs_functions(PT_AST, TableName, Fields) ->
+build_belongs_to_functions(PT_AST, TableName, Fields) ->
   Refs = lists:filter(fun({_, Desc}) ->
-        lists:any(fun({E, _}) -> E =:= ref end, Desc)
+        lists:any(fun({E, _}) -> E =:= belongs_to end, Desc)
     end, Fields),
   case length(Refs) of
     0 -> PT_AST;
     _ -> lists:foldl(fun(Ref, PT_AST1) ->
-            build_ref_function(PT_AST1, TableName, Ref)
+            build_belongs_to_function(PT_AST1, TableName, Ref)
         end, PT_AST, Refs)
   end.
+
+build_has_functions(PT_AST, TableName, Fields) ->
+  lists:foldl(fun({Field, Options}, PT_AST1) ->
+        case lists:keyfind(has_one, 1, Options) of
+          {has_one, Ref} -> 
+            build_has_one_function(Field, Ref, TableName, PT_AST1);
+          _ -> case lists:keyfind(has_many, 1, Options) of
+              {has_many, Ref} -> 
+                build_has_many_function(Field, Ref, TableName, PT_AST1);
+              _ -> case lists:keyfind(habtm, 1, Options) of
+                  {habtm, Ref} ->
+                    build_habtm_function(Field, Ref, TableName, PT_AST1);
+                  _ -> PT_AST1
+                end
+            end
+        end
+    end, PT_AST, Fields).
 
 build_to_keylist_function(PT_AST, TableName) ->
   Record = pt_helpers:build_var('Rec'),
@@ -217,56 +258,96 @@ build_to_keylist_function(PT_AST, TableName) ->
 
 %% - 
 
-% Entity:ref(Conn)
-build_ref_function(PT_AST, TableName, {FieldName, Desc}) ->
-  case lists:keyfind(ref, 1, Desc) of
-    false -> PT_AST;
-    {ref, Table} -> 
-      STable = atom_to_list(Table),
-      case string:tokens(atom_to_list(FieldName), "_") of
-        [STable|Rest] -> 
-          Field = list_to_atom(string:join(Rest, "_")),
-          Record = pt_helpers:build_var('Rec'),
-          Ref = pt_helpers:build_var('Ref'),
-          SetRefGuard = pt_helpers:build_guard(
-              pt_helpers:build_op(
-                '=:=', 
-                pt_helpers:build_call(element, [pt_helpers:build_integer(1), Ref]), 
-                pt_helpers:build_atom(Table))
-              ),
-          SetRefClause = pt_helpers:build_clause(
-              [Ref, Record],
-              SetRefGuard,
-              pt_helpers:build_call(TableName, FieldName, [
-                  pt_helpers:build_call(Table, Field, [Ref]),
-                  Record
-                  ])
-              ),
-          PT_AST1 = pt_helpers:add_function(PT_AST, export, Table, SetRefClause),
-          GetCallBody = pt_helpers:build_list([
+build_has_one_function(Field, Ref, TableName, PT_AST) ->
+  build_has_one_or_many_function(Field, Ref, TableName, PT_AST, first).
+
+build_has_many_function(Field, Ref, TableName, PT_AST) ->
+  build_has_one_or_many_function(Field, Ref, TableName, PT_AST, all).
+
+build_has_one_or_many_function(Field, Ref, TableName, PT_AST, FindType) ->
+  Record = pt_helpers:build_var('Rec'),
+  HasOneFindClause = pt_helpers:build_list([
+        pt_helpers:build_tuple({
+            pt_helpers:build_atom(where),
+            pt_helpers:build_op(
+              '++',
+              pt_helpers:build_call(
+                erlang, atom_to_list, 
+                [pt_helpers:build_call(Ref, ref_col, [pt_helpers:build_atom(TableName)])]),
+              pt_helpers:build_string(" = :value")),
+            pt_helpers:build_list([
                 pt_helpers:build_tuple({
-                    pt_helpers:build_atom(where),
-                    pt_helpers:build_string(atom_to_list(Field) ++ " = :value"),
-                    pt_helpers:build_list([
-                        pt_helpers:build_tuple({
-                            pt_helpers:build_atom(value),
-                            pt_helpers:build_call(TableName, FieldName, [Record])
-                            })
-                        ])
+                    pt_helpers:build_atom(value),
+                    pt_helpers:build_call(TableName, id, [Record])
                     })
-                ]),
-          GetRefClause = pt_helpers:build_clause(
-              [Record],
-              pt_helpers:build_call(texas, find, [
-                  pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
-                  pt_helpers:build_atom(Table),
-                  pt_helpers:build_atom(all),
-                  GetCallBody
-                  ])
-              ),
-          pt_helpers:add_function(PT_AST1, export, Table, GetRefClause);
-        _ -> PT_AST
-      end
+                ])
+            })
+        ]),
+  HasOneClause = pt_helpers:build_clause(
+      [Record],
+      pt_helpers:build_call(texas, find, [
+          pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
+          pt_helpers:build_atom(Ref),
+          pt_helpers:build_atom(FindType),
+          HasOneFindClause
+          ])
+      ),
+  pt_helpers:add_function(PT_AST, export, Field, HasOneClause).
+
+build_habtm_function(_Field, _Ref, _TableName, PT_AST) ->
+  % TODO
+  PT_AST.
+
+% Entity:belongs_to(Conn)
+build_belongs_to_function(PT_AST, TableName, {FieldName, Desc}) ->
+  case lists:keyfind(belongs_to, 1, Desc) of
+    false -> PT_AST;
+    {belongs_to, Table} -> 
+      ["id"|Rest] = lists:reverse(string:tokens(atom_to_list(FieldName), "_")),
+      RealField = list_to_atom(string:join(lists:reverse(Rest), "_")),
+      Record = pt_helpers:build_var('Rec'),
+      Ref = pt_helpers:build_var('Ref'),
+      SetRefGuard = pt_helpers:build_guard(
+          pt_helpers:build_op(
+            '=:=', 
+            pt_helpers:build_call(element, [pt_helpers:build_integer(1), Ref]), 
+            pt_helpers:build_atom(Table))
+          ),
+      SetRefClause = pt_helpers:build_clause(
+          [Ref, Record],
+          SetRefGuard,
+          pt_helpers:build_call(TableName, FieldName, [
+              pt_helpers:build_call(Table, id, [Ref]),
+              Record
+              ])
+          ),
+      PT_AST1 = pt_helpers:add_function(PT_AST, export, RealField, SetRefClause),
+      GetCallBody = pt_helpers:build_list([
+            pt_helpers:build_tuple({
+                pt_helpers:build_atom(where),
+                pt_helpers:build_string("id = :value"),
+                pt_helpers:build_list([
+                    pt_helpers:build_tuple({
+                        pt_helpers:build_atom(value),
+                        pt_helpers:build_call(TableName, FieldName, [Record])
+                        })
+                    ])
+                })
+            ]),
+      GetRefClause = pt_helpers:build_clause(
+          [Record],
+          pt_helpers:build_call(texas, find, [
+              pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
+              pt_helpers:build_atom(Table),
+              pt_helpers:build_atom(first),
+              GetCallBody
+              ])
+          ),
+      PT_AST2 = pt_helpers:add_function(PT_AST1, export, RealField, GetRefClause),
+      RefColClause = pt_helpers:build_clause(
+          [pt_helpers:build_atom(Table)],
+          pt_helpers:build_atom(FieldName)),
+      pt_helpers:add_function(PT_AST2, export, ref_col, RefColClause)
   end.
 
 build_common_function(PT_AST, Fields, Option, Default) ->
@@ -284,3 +365,25 @@ build_common_clauses(Fields, Option, Default) ->
             pt_helpers:build_tuple(Value)
           )]
     end, [], Fields).
+
+%% @doc
+%% Merge the two keylists.
+%%
+%% Example:
+%% <pre>
+%% Args = [{a, 1}, {b, 2}],
+%% Default = [{b, 3}, {c, 4}],
+%% elists:merge_keylists(1, Args, Default),
+%%   #=> [{c, 4}, {a, 1}, {b, 2}]
+%% </pre>
+%% @end
+merge_keylists(_, [], TupleList2) ->
+  TupleList2;
+merge_keylists(N, [Tuple|Rest], TupleList2) when 
+    is_integer(N), is_list(TupleList2), is_tuple(Tuple), is_list(Rest) ->
+  Key = element(N, Tuple),
+  TupleList3 = case lists:keysearch(Key, N, TupleList2) of
+    {value, _} -> lists:keydelete(Key, N, TupleList2);
+    false -> TupleList2
+  end,
+  merge_keylists(N, Rest, TupleList3 ++ [Tuple]).
