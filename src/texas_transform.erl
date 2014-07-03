@@ -22,7 +22,8 @@ build(PT_AST) ->
   PT_ASTB = build_belongs_to_functions(PT_ASTA, TableName, Fields),
   PT_ASTC = build_has_functions(PT_ASTB, TableName, Fields),
   PT_ASTD = build_to_keylist_function(PT_ASTC, TableName),
-  PT_ASTD.
+  PT_ASTE = build_conn_function(PT_ASTD, TableName),
+  PT_ASTE.
 
 update_fields(Fields) ->
   lists:map(fun({Field, Options}) ->
@@ -39,7 +40,10 @@ build_record(PT_AST, TableName, Fields) ->
   FieldsDef = lists:foldl(fun({Name, Options}, Acc) ->
           Acc ++ case lists:keyfind(type, 1, Options) of
             {type, Type} -> [{Name, Type}];
-            _ -> []
+            _ -> case lists:keyfind(habtm, 1, Options) of
+                {habtm, Ref} -> [{list_to_atom(atom_to_list(Ref) ++ "_habtm"), term}];
+                _ -> []
+              end
           end
       end, [], Fields) ++ [{'__texas_conn', term}],
   pt_helpers:add_record(PT_AST, TableName, FieldsDef).
@@ -67,7 +71,7 @@ build_type_functions(PT_AST, Fields) ->
             _ -> []
         end
     end, [], Fields),
-  pt_helpers:add_function(PT_AST, export, type, Clauses).
+  pt_helpers:add_function(PT_AST, export, '-type', Clauses).
 
 build_fields_function(PT_AST, Fields) ->
   FieldsList = lists:foldl(fun({Name, Options}, Acc) ->
@@ -77,7 +81,7 @@ build_fields_function(PT_AST, Fields) ->
           end
       end, [], Fields),
   Clause = pt_helpers:build_clause([], pt_helpers:build_value(FieldsList)),
-  pt_helpers:add_function(PT_AST, export, fields, Clause).
+  pt_helpers:add_function(PT_AST, export, '-fields', Clause).
 
 build_new_functions(PT_AST, TableName) ->
   Conn = pt_helpers:build_var('Conn'),
@@ -127,7 +131,7 @@ build_set_functions(PT_AST, TableName, Fields) ->
           {type, _} ->
             V = pt_helpers:build_var('V'),
             Type = pt_helpers:build_var('Type'),
-            TypeCall = pt_helpers:build_call(type, [pt_helpers:build_atom(FieldName)]),
+            TypeCall = pt_helpers:build_call('-type', [pt_helpers:build_atom(FieldName)]),
             TypeMatch = pt_helpers:build_match(Type, TypeCall),
             ToCall = pt_helpers:build_call(texas_type, to, [Type, V]),
             V1 = pt_helpers:build_var('V1'),
@@ -169,7 +173,6 @@ build_crud_functions(PT_AST, TableName) ->
   InsertClause = pt_helpers:build_clause(
       [Record],
       pt_helpers:build_call(texas, insert, [
-          pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
           Table,
           Record
           ])
@@ -178,7 +181,6 @@ build_crud_functions(PT_AST, TableName) ->
   UpdateClause = pt_helpers:build_clause(
       [Arg1, Record],
       pt_helpers:build_call(texas, update, [
-          pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
           Table,
           Arg1,
           Record
@@ -188,7 +190,6 @@ build_crud_functions(PT_AST, TableName) ->
   DeleteClause = pt_helpers:build_clause(
       [Record],
       pt_helpers:build_call(texas, delete, [
-          pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
           Table,
           Record
           ])
@@ -208,12 +209,12 @@ build_tablepkid_function(PT_AST, Fields) ->
     _ -> throw("Wrong table definition : multiple autoincrement ids")
   end,
   pt_helpers:add_function(
-    PT_AST, export, table_pk_id, 
+    PT_AST, export, '-table_pk_id', 
     pt_helpers:build_clause([], pt_helpers:build_tuple(Resp))).
 
 build_indexes_function(PT_AST) ->
   pt_helpers:add_function(
-    PT_AST, export, indexes, 
+    PT_AST, export, '-indexes', 
     pt_helpers:build_clause([], pt_helpers:build_list(
         pt_helpers:directive(PT_AST, index)))).
 
@@ -229,21 +230,22 @@ build_belongs_to_functions(PT_AST, TableName, Fields) ->
   end.
 
 build_has_functions(PT_AST, TableName, Fields) ->
-  lists:foldl(fun({Field, Options}, PT_AST1) ->
-        case lists:keyfind(has_one, 1, Options) of
-          {has_one, Ref} -> 
-            build_has_one_function(Field, Ref, TableName, PT_AST1);
-          _ -> case lists:keyfind(has_many, 1, Options) of
-              {has_many, Ref} -> 
-                build_has_many_function(Field, Ref, TableName, PT_AST1);
-              _ -> case lists:keyfind(habtm, 1, Options) of
-                  {habtm, Ref} ->
-                    build_habtm_function(Field, Ref, TableName, PT_AST1);
-                  _ -> PT_AST1
-                end
-            end
-        end
-    end, PT_AST, Fields).
+  {PT_AST2, HABTM1} = lists:foldl(fun({Field, Options}, {PT_AST1, HABTM}) ->
+          case lists:keyfind(has_one, 1, Options) of
+            {has_one, Ref} -> 
+              {build_has_one_function(Field, Ref, TableName, PT_AST1), HABTM};
+            _ -> case lists:keyfind(has_many, 1, Options) of
+                {has_many, Ref} -> 
+                  {build_has_many_function(Field, Ref, TableName, PT_AST1), HABTM};
+                _ -> case lists:keyfind(habtm, 1, Options) of
+                    {habtm, Ref} ->
+                      {build_habtm_function(Field, Ref, TableName, PT_AST1), HABTM ++ [{Field, Ref}]};
+                    _ -> {PT_AST1, HABTM}
+                  end
+              end
+          end
+      end, {PT_AST, []}, Fields),
+  build_habtm_list_function(HABTM1, PT_AST2).
 
 build_to_keylist_function(PT_AST, TableName) ->
   Record = pt_helpers:build_var('Rec'),
@@ -255,6 +257,13 @@ build_to_keylist_function(PT_AST, TableName) ->
           ])
       ),
   pt_helpers:add_function(PT_AST, export, to_keylist, ToKLClause).
+
+build_conn_function(PT_AST, TableName) ->
+  Record = pt_helpers:build_var('Rec'),
+  ConnClause = pt_helpers:build_clause(
+      [Record],
+      pt_helpers:build_get_record_field(Record, TableName, '__texas_conn')),
+  pt_helpers:add_function(PT_AST, export, '-conn', ConnClause).
 
 %% - 
 
@@ -269,15 +278,9 @@ build_has_one_or_many_function(Field, Ref, TableName, PT_AST, FindType) ->
   HasOneFindClause = pt_helpers:build_list([
         pt_helpers:build_tuple({
             pt_helpers:build_atom(where),
-            pt_helpers:build_op(
-              '++',
-              pt_helpers:build_call(
-                erlang, atom_to_list, 
-                [pt_helpers:build_call(Ref, ref_col, [pt_helpers:build_atom(TableName)])]),
-              pt_helpers:build_string(" = :value")),
             pt_helpers:build_list([
                 pt_helpers:build_tuple({
-                    pt_helpers:build_atom(value),
+                    pt_helpers:build_call(Ref, '-ref_col', [pt_helpers:build_atom(TableName)]),
                     pt_helpers:build_call(TableName, id, [Record])
                     })
                 ])
@@ -294,9 +297,39 @@ build_has_one_or_many_function(Field, Ref, TableName, PT_AST, FindType) ->
       ),
   pt_helpers:add_function(PT_AST, export, Field, HasOneClause).
 
-build_habtm_function(_Field, _Ref, _TableName, PT_AST) ->
-  % TODO
-  PT_AST.
+build_habtm_function(Field, Ref, TableName, PT_AST) ->
+  Record = pt_helpers:build_var('Record'),
+  GetClause = pt_helpers:build_clause(
+      Record,
+      pt_helpers:build_case(
+        pt_helpers:build_get_record_field('Record', TableName, list_to_atom(atom_to_list(Ref) ++ "_habtm")),
+        [pt_helpers:build_clause(
+            pt_helpers:build_atom(undefined), 
+            pt_helpers:build_call(
+              texas,
+              get_habtm_data,
+              [pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
+               pt_helpers:build_atom(TableName), 
+               pt_helpers:build_atom(Ref), 
+               pt_helpers:build_get_record_field('Record', TableName, id)])),
+         pt_helpers:build_clause(
+            pt_helpers:build_var('X'),
+            pt_helpers:build_var('X'))]
+        )
+      ),
+  PT_AST1 = pt_helpers:add_function(PT_AST, export, Field, GetClause),
+  SetClause = pt_helpers:build_clause(
+      [pt_helpers:build_var('Data'), Record],
+      pt_helpers:build_record('Record', TableName, [
+          pt_helpers:build_record_field(list_to_atom(atom_to_list(Ref) ++ "_habtm"), 
+                                        pt_helpers:build_var('Data'))])),
+  pt_helpers:add_function(PT_AST1, export, Field, SetClause).
+
+build_habtm_list_function(HABTM, PT_AST) ->
+  HabtmListClause = pt_helpers:build_clause(
+      [],
+      pt_helpers:build_list(HABTM)),
+  pt_helpers:add_function(PT_AST, export, '-habtm', HabtmListClause).
 
 % Entity:belongs_to(Conn)
 build_belongs_to_function(PT_AST, TableName, {FieldName, Desc}) ->
@@ -325,10 +358,9 @@ build_belongs_to_function(PT_AST, TableName, {FieldName, Desc}) ->
       GetCallBody = pt_helpers:build_list([
             pt_helpers:build_tuple({
                 pt_helpers:build_atom(where),
-                pt_helpers:build_string("id = :value"),
                 pt_helpers:build_list([
                     pt_helpers:build_tuple({
-                        pt_helpers:build_atom(value),
+                        pt_helpers:build_atom(id),
                         pt_helpers:build_call(TableName, FieldName, [Record])
                         })
                     ])
@@ -347,12 +379,12 @@ build_belongs_to_function(PT_AST, TableName, {FieldName, Desc}) ->
       RefColClause = pt_helpers:build_clause(
           [pt_helpers:build_atom(Table)],
           pt_helpers:build_atom(FieldName)),
-      pt_helpers:add_function(PT_AST2, export, ref_col, RefColClause)
+      pt_helpers:add_function(PT_AST2, export, '-ref_col', RefColClause)
   end.
 
 build_common_function(PT_AST, Fields, Option, Default) ->
   Clauses = build_common_clauses(Fields, Option, Default),
-  pt_helpers:add_function(PT_AST, export, Option, Clauses).
+  pt_helpers:add_function(PT_AST, export, list_to_atom("-" ++ atom_to_list(Option)), Clauses).
 
 build_common_clauses(Fields, Option, Default) ->
   lists:foldl(fun({FieldName, Options}, Clauses) ->

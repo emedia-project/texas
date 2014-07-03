@@ -1,4 +1,4 @@
-REBAR       = ../../rebar
+REBAR       = ../rebar
 
 .PHONY: compile get-deps 
 

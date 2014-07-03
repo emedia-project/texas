@@ -6,12 +6,16 @@
   connect/2, 
   close/1, 
   find/4, 
-  insert/3, 
-  update/4, 
-  delete/3, 
+  insert/2, 
+  update/3, 
+  delete/2, 
   create_table/2,
+  create_table/3,
+  to_keylist/2,
   connection/1,
-  to_keylist/2
+  driver/1,
+  create_habtm_table/3,
+  get_habtm_data/4
 ]).
 
 -record(texas, {
@@ -72,24 +76,35 @@ connect(URI, Options) ->
     E -> E
   end.
 
+% @hidden
 -spec call(connection(), func()) -> any().
 call(Conn, Function) ->
   call(Conn, Function, []).
+% @hidden
 -spec call(connection(), func(), params()) -> any().
 call(Conn, Function, Params) ->
-  erlang:apply(Conn#texas.module, Function, [Conn] ++ Params).
+  erlang:apply(module(Conn), Function, [Conn] ++ Params).
 
 % @doc
 % Create the given table (if not exists)
 % @end
 -spec create_table(connection(), table()) -> any().
 create_table(Conn, Table) ->
-  call(Conn, create_table, [Table]).
+  lager:debug("== Create table ~p ==", [Table]),
+  case lists:all(fun({_, Ref}) ->
+          ok == create_habtm_table(Conn, Table, Ref)
+      end, Table:'-habtm'()) of
+    true -> call(Conn, create_table, [Table]);
+    false -> {error, habtm_error}
+  end.
 
-% @hidden
--spec insert(connection(), table(), data()) -> data().
-insert(Conn, Table, Record) ->
-  call(Conn, insert, [Table, Record]).
+% @doc
+% Create the given table (if not exists)
+% @end
+-spec create_table(connection(), table(), list()) -> any().
+create_table(Conn, Table, Fields) ->
+  lager:debug("== Create table ~p ==", [Table]),
+  call(Conn, create_table, [Table, Fields]).
 
 % @hidden
 -spec find(connection(), table(), type(), clause()) -> data() | [data()].
@@ -97,18 +112,57 @@ find(Conn, Table, Type, Clause) ->
   call(Conn, select, [Table, Type, Clause]).
 
 % @hidden
--spec update(connection(), table(), data(), data()) -> any().
-update(Conn, Table, UpdateData, Record) ->
-  Data = Table:new(Conn, UpdateData),
+-spec insert(table(), data()) -> data().
+insert(Table, Record) ->
+  Result = call(Record, insert, [Table, Record]),
+  lists:foreach(fun({Field, Ref}) ->
+        _ = case Record:Field() of 
+          undefined -> ok;
+          Refs -> lists:foreach(fun(RefData) -> insert_habtm(Record, Table, Result:id(), Ref, RefData:id()) end, Refs)
+        end
+    end, Table:'-habtm'()),
+  Result.
+insert_habtm(Conn, From, FromID, To, ToID) ->
+  Table = texas_sql:get_habtm_table(From, To),
+  call(Conn, insert, [Table, [{habtm_rowid(From), FromID}, {habtm_rowid(To), ToID}]]).
+
+% @hidden
+-spec update(table(), data(), data()) -> any().
+update(Table, UpdateData, Record) ->
+  Data = Table:new(Record:'-conn'(), UpdateData),
   RealUpdateData = lists:filter(fun({_, Value}) ->
           Value =/= undefined
       end, Data:to_keylist()),
-  call(Conn, update, [Table, Record, RealUpdateData]).
+  Result = case RealUpdateData of
+    [] -> Record;
+    _ -> call(Record, update, [Table, Record, RealUpdateData])
+  end,
+  _ = case Table:'-habtm'() of
+    [] -> ok;
+    _ -> lists:foreach(fun({Field, Ref}) ->
+            _ = case lists:keyfind(Field, 1, UpdateData) of 
+              {Field, Datas} -> update_habtm(Record, Table, Result:id(), Ref, Datas);
+              false -> ok
+            end
+        end, Table:'-habtm'())
+  end,
+  Result.
+update_habtm(Conn, From, FromID, To, ToRecords) ->
+  delete_habtm(Conn, From, FromID, To),
+  lists:foreach(fun(ToRecord) ->
+        insert_habtm(Conn, From, FromID, To, ToRecord:id())
+    end, ToRecords).
+delete_habtm(Conn, From, FromID, To) ->
+  call(Conn, delete, [texas_sql:get_habtm_table(From, To), [{habtm_rowid(From), FromID}]]).
 
 % @hidden
--spec delete(connection(), table(), data()) -> any().
-delete(Conn, Table, Record) ->
-  call(Conn, delete, [Table, Record]).
+-spec delete(table(), data()) -> any().
+delete(Table, Record) ->
+  Result = call(Record, delete, [Table, Record]),
+  lists:foreach(fun({_, Ref}) ->
+        delete_habtm(Record, Table, Record:id(), Ref)
+    end, Table:'-habtm'()),
+  Result.
 
 % @doc
 % Close the connection to the database
@@ -117,12 +171,62 @@ delete(Conn, Table, Record) ->
 close(Conn) ->
   call(Conn, close).
 
--spec connection(connection()) -> any().
-connection(Conn) -> Conn#texas.conn.
+% @hidden
+-spec connection(connection() | data()) -> any().
+connection(Conn) when is_record(Conn, texas) -> 
+  Conn#texas.conn;
+connection(Conn) ->
+  connection(Conn:'-conn'()).
 
+-spec driver(connection() | data()) -> atom().
+driver(Conn) when is_record(Conn, texas) -> 
+  Conn#texas.driver;
+driver(Conn) ->
+  driver(Conn:'-conn'()).
+
+% @hidden
+-spec module(connection() | data()) -> any().
+module(Conn) when is_record(Conn, texas) ->
+  Conn#texas.module;
+module(Conn) ->
+  module(Conn:'-conn'()).
+
+% @doc
+% Return the record as keylist
+% @end
 -spec to_keylist(atom(), data()) -> list().
 to_keylist(Table, Record) ->
   lists:map(fun(Field) ->
         {Field, Record:Field()}
-    end, Table:fields()).
+    end, Table:'-fields'()).
 
+% @hidden
+-spec create_habtm_table(connection(), atom(), atom()) -> any().
+create_habtm_table(Conn, Mod1, Mod2) ->
+  JoinTableName = texas_sql:get_habtm_table(Mod1, Mod2),
+  FieldA = {habtm_rowid(Mod1), [{type, id}]},
+  FieldB = {habtm_rowid(Mod2), [{type, id}]},
+  create_table(Conn, JoinTableName, [FieldA, FieldB]).
+
+% @hidden
+-spec get_habtm_data(connection(), atom(), atom(), any()) -> any().
+get_habtm_data(Conn, From, To, FromID) ->
+  case FromID of
+    undefined -> undefined;
+    _ -> 
+      JoinTableName = texas_sql:get_habtm_table(From, To),
+      JoinResults = call(Conn, select, [JoinTableName, all, [{where, [{habtm_rowid(From), FromID}]}]]),
+      lists:foldl(fun(Join, Result) ->
+            ToRow = habtm_rowid(To),
+            case lists:keyfind(ToRow, 1, Join) of
+              {ToRow, ToID} -> Result ++ [call(Conn, select, [To, first, [{where, [{id, ToID}]}]])];
+              false -> Result
+            end
+        end, [], JoinResults)
+  end.
+
+% @hidden
+% Return the row ID for a given module
+-spec habtm_rowid(atom()) -> atom().
+habtm_rowid(Mod) ->
+  list_to_atom(atom_to_list(Mod) ++ "_id").

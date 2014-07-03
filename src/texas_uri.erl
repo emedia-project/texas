@@ -9,7 +9,7 @@ parse(URI) ->
   end.
 
 parse(Scheme, "//" ++ Rest) ->
-  case re:run(Rest, "([^/]*)(/([^\\?#]*))?(\\?([^#]*))?(#?(.*))", [global, {capture, [1, 3, 5, 7], list}]) of
+  case re:run(Rest, "([^/\\?]*)(/([^\\?#]*))?(\\?([^#]*))?(#?(.*))", [global, {capture, [1, 3, 5, 7], list}]) of
     {match, [[Authority, Path, Query, Fragment]|_]} -> 
       case parse_auth(Authority) of 
         {User, Pass, Server, Port} ->
@@ -49,6 +49,16 @@ parse_serv(ServPort) ->
 
 parse_user([]) -> {"", ""};
 parse_user(LogPass) ->
-  [User|Pass] = string:tokens(LogPass, ":"),
-  {User, string:join(Pass, ":")}.
+  split_first(LogPass, ":").
 
+split_first(String, Token) ->
+  split_first(String, Token, {[], []}).
+split_first([], _, R) -> R;
+split_first([C|Rest], Token, {A, B}) ->
+  case include(C, Token) of
+    true -> {A, Rest};
+    false -> split_first(Rest, Token, {A ++ [C], B})
+  end.
+
+include(X, List) ->
+  lists:any(fun(E) -> E =:= X end, List).

@@ -1,4 +1,4 @@
-{application, pgsql_texas_example,
+{application, texas_example,
  [
   {description, ""},
   {vsn, "1"},

@@ -1,6 +1,6 @@
 REBAR       = ./rebar
 
-.PHONY: compile get-deps 
+.PHONY: compile get-deps doc
 
 all: compile
 
@@ -18,7 +18,7 @@ clean:
 realclean: clean
 	@$(REBAR) delete-deps
 
-test:
+test: get-deps
 	@$(REBAR) skip_deps=true eunit
 
 doc:
