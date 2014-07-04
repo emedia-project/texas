@@ -219,7 +219,7 @@ get_habtm_data(Conn, From, To, FromID) ->
       lists:foldl(fun(Join, Result) ->
             ToRow = habtm_rowid(To),
             case lists:keyfind(ToRow, 1, Join) of
-              {ToRow, ToID} -> Result ++ [call(Conn, select, [To, first, [{where, [{id, ToID}]}]])];
+              {ToRow, ToID} -> Result ++ [call(Conn, select, [To, first, [{where, [{id, texas_type:to(integer, ToID)}]}]])];
               false -> Result
             end
         end, [], JoinResults)
