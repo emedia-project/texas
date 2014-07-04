@@ -1,6 +1,6 @@
 REBAR       = ./rebar
 
-.PHONY: compile get-deps doc
+.PHONY: compile get-deps
 
 all: compile
 
@@ -22,6 +22,8 @@ test: get-deps
 	@$(REBAR) skip_deps=true eunit
 
 doc:
+	@mkdir doc
+	@cp _doc/* doc
 	$(REBAR) skip_deps=true doc
 
 dev:
