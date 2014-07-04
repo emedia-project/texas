@@ -6,5 +6,4 @@ erl_crash.dump
 .eunit
 doc
 log
-*.png
 *.db
