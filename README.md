@@ -20,7 +20,7 @@ You also need a *driver* :
 
 ## Define table
 
-With `texas` a Table is defined as an Erlang module. The name of the table is the name of the module.
+With `texas` a table is defined as an Erlang module. The name of the table is the name of the module.
 
 ```erlang
 -module(my_table).
@@ -32,7 +32,7 @@ To generate the table, you **must** use the `texas_transform` parser. To do so, 
 -compile([{parse_transform, texas_transform}]).
 ```
 
-The you define the columns using `-field`. This directive takes a tuple of two elements. The first element is an atom corresponding to the name of the column. The second element is a key list accepting the following options :
+Then you define the columns using `-field`. This directive takes a tuple of two elements. The first element is an atom corresponding to the name of the column. The second element is a key list accepting the following options :
 
 * `{type, Type}` where `Type` = `integer`|`string`|`float`|`date`|`time`|`datetime`
 * `{autoincrement, Auto}` where `Auto` = `true`|`false` (default: `false`)
