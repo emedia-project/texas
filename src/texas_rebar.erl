@@ -31,6 +31,9 @@ run(Config) ->
     BaseDir =:= Cwd ->
       Ebin = filename:join([BaseDir, "ebin"]),
       code:add_patha(Ebin),
+      lists:foreach(fun(Path) ->
+            code:add_patha(Path)
+        end, filelib:wildcard(filename:join([BaseDir, "apps", "**", "ebin"]))),
       true;
     true -> false
   end.
