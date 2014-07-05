@@ -169,13 +169,13 @@ If you have a configuration file, you can create your tables with rebar. To do s
 Finally, run
 
 ```
-rebar db-migrate
+rebar db-create
 ```
 
 The `texas_rebar` plugin assume that's your configuration file is `config/sys.config`. If not, you can specify the path to the config file, using the `texas` option :
 
 ```
-rebar db-migrate texas=path/to/my.config
+rebar db-create texas=path/to/my.config
 ```
 
 ## Usage

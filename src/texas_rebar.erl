@@ -1,13 +1,13 @@
 -module(texas_rebar).
 -export([
-  'db-migrate'/2
+  'db-create'/2
   ]).
 
 -define(CONSOLE(Str, Args), io:format(Str++"~n", Args)).
 
 % {plugins, [texas_rebar]}
 
-'db-migrate'(Config, _) ->
+'db-create'(Config, _) ->
   BaseDir = rebar_config:get_xconf(Config, base_dir),
   Cwd = rebar_utils:get_cwd(),
   if 
