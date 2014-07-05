@@ -12,6 +12,7 @@
   delete/2, 
   create_table/2,
   create_table/3,
+  drop_table/2,
   to_keylist/2,
   connection/1,
   driver/1,
@@ -115,7 +116,28 @@ create_table(Conn, Table) ->
           ok == create_habtm_table(Conn, Table, Ref)
       end, Table:'-habtm'()) of
     true -> call(Conn, create_table, [Table]);
-    false -> {error, habtm_error}
+    false -> error
+  end.
+
+% @doc
+% Drop the given table (if exists)
+% @end
+-spec drop_table(connection(), table()) -> ok | error.
+drop_table(Conn, Table) ->
+  case call(Conn, drop_table, [Table]) of
+    ok ->
+      case texas_sql:defined_table(Table) of
+        true ->
+          case lists:all(fun({_, Ref}) ->
+                  ok == drop_habtm_table(Conn, Table, Ref)
+              end, Table:'-habtm'()) of
+            true -> ok;
+            false -> error
+          end;
+        false -> 
+          ok
+      end;
+    E -> E
   end.
 
 % @doc
@@ -227,6 +249,12 @@ create_habtm_table(Conn, Mod1, Mod2) ->
   FieldA = {habtm_rowid(Mod1), [{type, id}]},
   FieldB = {habtm_rowid(Mod2), [{type, id}]},
   create_table(Conn, JoinTableName, [FieldA, FieldB]).
+
+% @hidden
+-spec drop_habtm_table(connection(), atom(), atom()) -> any().
+drop_habtm_table(Conn, Mod1, Mod2) ->
+  JoinTableName = texas_sql:get_habtm_table(Mod1, Mod2),
+  drop_table(Conn, JoinTableName).
 
 % @hidden
 -spec get_habtm_data(connection(), atom(), atom(), any()) -> any().
