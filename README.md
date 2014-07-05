@@ -178,6 +178,12 @@ The `texas_rebar` plugin assume that's your configuration file is `config/sys.co
 rebar db-create texas=path/to/my.config
 ```
 
+You can also drop tables with rebar, using the `db-drop` command :
+
+```
+rebar db-drop [texas=path/to/my.config]
+```
+
 ## Usage
 
 ```erlang
