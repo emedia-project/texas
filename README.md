@@ -201,7 +201,7 @@ Person2 = Person:insert(),
 io:format("person created with ID #~p~n", [Person2:id()]),
 
 % Find
-Person3 = person:find(Conn, first, [{where, "name = :name", [{name, "Greg"}]}]),
+Person3 = person:find(Conn, first, [{where, [{name, "=", "Greg"}]}]),
 Address2 = Person3:address(),
 PersonsAtAddress = Address2:people(),
 
