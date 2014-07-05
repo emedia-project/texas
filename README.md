@@ -182,7 +182,6 @@ rebar db-migrate texas=path/to/my.config
 
 ```erlang
 texas:start(),
-texas_sqlite:start(), % Start driver
 
 % Initialize connection
 Conn = texas:connect("sqlite:///sample.db"),
