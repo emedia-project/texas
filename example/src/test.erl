@@ -4,25 +4,34 @@
   sqlite/0,
   mysql/2,
   pgsql/2,
-  main/1
+  auto/0
 ]).
 
 sqlite() ->
-  texas_sqlite:start(),
   main("sqlite:///sample.db").
 
 mysql(DBUser, Pass) ->
-  texas_mysql:start(),
   main("mysql://" ++ DBUser ++ ":" ++ Pass ++ "@localhost:3306/texas").
 
 pgsql(DBUser, Pass) ->
-  texas_pgsql:start(),
   main("pgsql://" ++ DBUser ++ ":" ++ Pass ++ "@localhost:5432/texas").
 
 main(URI) ->
   texas:start(),
-
   Conn = texas:connect(URI),
+  run_tests(Conn),
+  texas:close(Conn).
+
+auto() ->
+  texas:start(),
+  case texas:connect() of
+    {error, E} -> io:format("connection error : ~p~n", [E]);
+    Conn -> 
+      run_tests(Conn),
+      texas:close(Conn)
+  end.
+
+run_tests(Conn) ->
   io:format("Conn : ~p~n", [Conn]),
   T1 = texas:create_table(Conn, users),
   io:format("T1 : ~p~n", [T1]),
@@ -104,6 +113,5 @@ main(URI) ->
   UsersForDevice5 = Device5:users(),
   io:format("UsersForDevice5 -> ~p~n", [lists:map(fun(U) -> U:to_keylist() end, UsersForDevice5)]),
 
-  User14:delete(),
+  User14:delete().
 
-  texas:close(Conn).

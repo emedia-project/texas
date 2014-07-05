@@ -2,6 +2,7 @@
 
 -export([start/0]).
 -export([
+  connect/0,
   connect/1, 
   connect/2, 
   close/1, 
@@ -39,15 +40,30 @@
 -type type() :: first | all.
 -type clause() :: any(). % TODO
 
--spec start() -> any().
+-spec start() -> ok | {ok, connection()} | {error, any()}.
 start() ->
-  {ok, _} = application:ensure_all_started(lager).
+  {ok, _} = application:ensure_all_started(lager),
+  ok = application:ensure_started(texas),
+  case get_value(autoconnect, false) of
+    true -> case get_value(uri, undefined) of
+        undefined -> ok;
+        URI -> case connect(URI) of
+            {error, E} -> {error, E};
+            Conn -> {ok, Conn}
+          end
+      end;
+    _ -> ok
+  end.
 
 % @doc
 % Connect to the database.
-%
-% The <em>connection_string()</em> depends on the driver.
 % @end
+-spec connect() -> connection() | {error, any()}.
+connect() ->
+  case get_value(uri, undefined) of
+    undefined -> {error, autoconnect_faild};
+    URI -> connect(URI)
+  end.
 -spec connect(connection_string()) -> connection() | {error, any()}.
 connect(URI) -> 
   connect(URI, []).
@@ -56,22 +72,26 @@ connect(URI, Options) ->
   case texas_uri:parse(URI) of
     {ok, {Scheme, User, Password, Server, Port, Path, _, _}} ->
       Module = list_to_atom("texas_" ++ Scheme),
-      case erlang:apply(Module, connect, [
-            User, Password, Server, Port, Path, Options
-            ]) of
-        {ok, Conn} -> 
-          #texas{
-            driver = Scheme,
-            module = Module,
-            user = User,
-            password = Password,
-            server = Server,
-            port = Port,
-            database = Path,
-            connection_string = URI,
-            conn = Conn
-            };
-        _ -> {error, connection_failed}
+      case erlang:apply(Module, start, []) of
+        ok ->
+          case erlang:apply(Module, connect, [
+                User, Password, Server, Port, Path, Options
+                ]) of
+            {ok, Conn} -> 
+              #texas{
+                driver = Scheme,
+                module = Module,
+                user = User,
+                password = Password,
+                server = Server,
+                port = Port,
+                database = Path,
+                connection_string = URI,
+                conn = Conn
+                };
+            _ -> {error, connection_failed}
+          end;
+        _ -> {error, load_driver_faild}
       end;
     E -> E
   end.
@@ -230,3 +250,9 @@ get_habtm_data(Conn, From, To, FromID) ->
 -spec habtm_rowid(atom()) -> atom().
 habtm_rowid(Mod) ->
   list_to_atom(atom_to_list(Mod) ++ "_id").
+
+get_value(Key, Default) ->
+  case application:get_env(texas, Key) of
+    {ok, Value} -> Value;
+    _ -> Default
+  end.

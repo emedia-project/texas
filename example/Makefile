@@ -20,5 +20,5 @@ realclean: clean
 
 dev:
 	rm -rf sample.db
-	@erl -pa ebin include apps/*/ebin apps/*/include deps/*/ebin deps/*/include
+	@erl -pa ebin include apps/*/ebin apps/*/include deps/*/ebin deps/*/include -config config/sys.config
 

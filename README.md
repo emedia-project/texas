@@ -128,6 +128,56 @@ Each table involved in an associations **must have** a column `id` !!!
 -field({parts,          [{habtm, parts}                        ]}).
 ```
 
+## Configuration
+
+There is two ways to connect to a database :
+
+* You can use `texas:connect/1`. This function's parameter is a connection string (`driver://[login[:password]@[server[:port]]/[path][?options]`).
+* Or, you can use `texas:connect/0`. In this case, you must add the connections informations in your config file.
+
+The config file accept the following `texas` options :
+
+* `uri` : give the connection string
+* `autoconnect` : `true`|`false` - If this option is set to `true` the connection will be automatic on call of `texas:start/0` which will then return `{ok, Conn}` or `{error, Error}`.
+* `tables` : give a list of tables (see bellow).
+
+Here is a configuration example:
+
+```erlang
+[
+  {texas, [
+    {uri, "sqlite:///sample.db"},
+    {autoconnect, true},
+    {tables, [address, device, pipo, users]}
+  ]}
+].
+```
+
+## Create tables
+
+You can create table using the `texas:create_table/2` function. This fonction takes two parameters:
+
+* A `connection` (returned by `texas:connect`).
+* A table module name.
+
+If you have a configuration file, you can create your tables with rebar. To do so, ensure that's all your tables are referenced in the list of the `tables` option. Add the `texas_rebar` plugin in your `rebar.config`  :
+
+```erlang
+{plugins, [texas_rebar]}.
+```
+
+Finally, run
+
+```
+rebar db-migrate
+```
+
+The `texas_rebar` plugin assume that's your configuration file is `config/sys.config`. If not, you can specify the path to the config file, using the `texas` option :
+
+```
+rebar db-migrate texas=path/to/my.config
+```
+
 ## Usage
 
 ```erlang
