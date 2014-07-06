@@ -26,6 +26,17 @@ to(string, Value) when is_binary(Value) ->
   binary_to_list(Value);
 to(string, Value) when is_atom(Value) ->
   atom_to_list(Value);
+% text
+to(text, Value) when is_integer(Value) ->
+  integer_to_list(Value);
+to(text, Value) when is_float(Value) ->
+  integer_to_list(trunc(Value));
+to(text, Value) when is_list(Value) ->
+  Value;
+to(text, Value) when is_binary(Value) ->
+  binary_to_list(Value);
+to(text, Value) when is_atom(Value) ->
+  atom_to_list(Value);
 % float
 to(float, Value) when is_integer(Value) ->
   float(Value);
