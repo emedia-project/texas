@@ -84,6 +84,17 @@ run_tests(Conn) ->
   Address1 = Address:insert(),
   io:format("Address1 -> ~p~n", [Address1:to_keylist()]),
 
+  LA = UserC:live_at(),
+  io:format("LA -> ~p~n", [LA]),
+
+  LB = Address1:user(),
+  io:format("LB -> ~p~n", [LB]),
+
+  [UserD|_] = UserC:update([{live_at, Address1}]),
+  io:format("UserD -> ~p~n", [UserD:to_keylist()]),
+  [UserE|_] = UserD:update([{live_at, null}]),
+  io:format("UserE -> ~p~n", [UserE:to_keylist()]),
+
   User9 = users:new(Conn, [{name, "John"}, {mail, "john@doe.com"}, {live_at, Address1}]),
   User10 = User9:insert(),
   io:format("User10 -> ~p~n", [User10:to_keylist()]),
@@ -109,7 +120,7 @@ run_tests(Conn) ->
   UsersForDevice4 = Device4:users(),
   io:format("UsersForDevice4 -> ~p~n", [lists:map(fun(U) -> U:to_keylist() end, UsersForDevice4)]),
 
-  Device5 = Device4:update([{users, UsersForDevice4 ++ User12}]),
+  [Device5|_] = Device4:update([{users, UsersForDevice4 ++ User12}]),
   UsersForDevice5 = Device5:users(),
   io:format("UsersForDevice5 -> ~p~n", [lists:map(fun(U) -> U:to_keylist() end, UsersForDevice5)]),
 

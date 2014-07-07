@@ -145,6 +145,11 @@ build_set_functions(PT_AST, TableName, Fields) ->
                   [R]
                   ),
                 pt_helpers:build_clause(
+                  [pt_helpers:build_atom(null), R],
+                  pt_helpers:build_record('R', TableName, [
+                      pt_helpers:build_record_field(FieldName, pt_helpers:build_atom(null))])
+                  ),
+                pt_helpers:build_clause(
                   [V, R],
                   [TypeMatch, ToV1, Record]
                   )
@@ -187,14 +192,24 @@ build_crud_functions(PT_AST, TableName) ->
           ])
       ),
   PT_AST3 = pt_helpers:add_function(PT_AST2, export, update, UpdateClause),
-  DeleteClause = pt_helpers:build_clause(
+  DeleteClauseDefault = pt_helpers:build_clause(
       [Record],
       pt_helpers:build_call(texas, delete, [
+          pt_helpers:build_atom(non_recursive),
           Table,
           Record
           ])
       ),
-  pt_helpers:add_function(PT_AST3, export, delete, DeleteClause).
+  PT_AST4 = pt_helpers:add_function(PT_AST3, export, delete, DeleteClauseDefault),
+  DeleteClause = pt_helpers:build_clause(
+      [Arg1, Record],
+      pt_helpers:build_call(texas, delete, [
+          Arg1,
+          Table,
+          Record
+          ])
+      ),
+  pt_helpers:add_function(PT_AST4, export, delete, DeleteClause).
 
 build_tablepkid_function(PT_AST, Fields) ->
   IDS = lists:filter(fun({_, Desc}) ->
@@ -230,22 +245,23 @@ build_belongs_to_functions(PT_AST, TableName, Fields) ->
   end.
 
 build_has_functions(PT_AST, TableName, Fields) ->
-  {PT_AST2, HABTM1} = lists:foldl(fun({Field, Options}, {PT_AST1, HABTM}) ->
+  {PT_AST2, HABTM1, Has1} = lists:foldl(fun({Field, Options}, {PT_AST1, HABTM, Has}) ->
           case lists:keyfind(has_one, 1, Options) of
             {has_one, Ref} -> 
-              {build_has_one_function(Field, Ref, TableName, PT_AST1), HABTM};
+              {build_has_one_function(Field, Ref, TableName, PT_AST1), HABTM, Has ++ [{Field, has_one, Ref}]};
             _ -> case lists:keyfind(has_many, 1, Options) of
                 {has_many, Ref} -> 
-                  {build_has_many_function(Field, Ref, TableName, PT_AST1), HABTM};
+                  {build_has_many_function(Field, Ref, TableName, PT_AST1), HABTM, Has ++ [{Field, has_many, Ref}]};
                 _ -> case lists:keyfind(habtm, 1, Options) of
                     {habtm, Ref} ->
-                      {build_habtm_function(Field, Ref, TableName, PT_AST1), HABTM ++ [{Field, Ref}]};
-                    _ -> {PT_AST1, HABTM}
+                      {build_habtm_function(Field, Ref, TableName, PT_AST1), HABTM ++ [{Field, Ref}], Has ++ [{Field, habtm, Ref}]};
+                    _ -> {PT_AST1, HABTM, Has}
                   end
               end
           end
-      end, {PT_AST, []}, Fields),
-  build_habtm_list_function(HABTM1, PT_AST2).
+      end, {PT_AST, [], []}, Fields),
+  PT_AST3 = build_habtm_list_function(HABTM1, PT_AST2),
+  build_has_list_function(Has1, PT_AST3).
 
 build_to_keylist_function(PT_AST, TableName) ->
   Record = pt_helpers:build_var('Rec'),
@@ -331,6 +347,12 @@ build_habtm_list_function(HABTM, PT_AST) ->
       pt_helpers:build_list(HABTM)),
   pt_helpers:add_function(PT_AST, export, '-habtm', HabtmListClause).
 
+build_has_list_function(Has, PT_AST) ->
+  HasListClause = pt_helpers:build_clause(
+      [],
+      pt_helpers:build_list(Has)),
+  pt_helpers:add_function(PT_AST, export, '-has', HasListClause).
+
 % Entity:belongs_to(Conn)
 build_belongs_to_function(PT_AST, TableName, {FieldName, Desc}) ->
   case lists:keyfind(belongs_to, 1, Desc) of
@@ -354,27 +376,49 @@ build_belongs_to_function(PT_AST, TableName, {FieldName, Desc}) ->
               Record
               ])
           ),
-      PT_AST1 = pt_helpers:add_function(PT_AST, export, RealField, SetRefClause),
+      SetRefClauseUndefined = pt_helpers:build_clause(
+          [pt_helpers:build_atom(undefined), Record],
+          pt_helpers:build_call(TableName, FieldName, [
+              pt_helpers:build_atom(undefined),
+              Record
+              ])
+          ),
+      SetRefClauseNull = pt_helpers:build_clause(
+          [pt_helpers:build_atom(null), Record],
+          pt_helpers:build_call(TableName, FieldName, [
+              pt_helpers:build_atom(null),
+              Record
+              ])
+          ),
+      PT_AST1 = pt_helpers:add_function(PT_AST, export, RealField, [SetRefClause, SetRefClauseUndefined, SetRefClauseNull]),
+
       GetCallBody = pt_helpers:build_list([
             pt_helpers:build_tuple({
                 pt_helpers:build_atom(where),
                 pt_helpers:build_list([
                     pt_helpers:build_tuple({
                         pt_helpers:build_atom(id),
-                        pt_helpers:build_call(TableName, FieldName, [Record])
+                        pt_helpers:build_var('ID')
                         })
                     ])
                 })
             ]),
-      GetRefClause = pt_helpers:build_clause(
-          [Record],
-          pt_helpers:build_call(texas, find, [
-              pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
-              pt_helpers:build_atom(Table),
-              pt_helpers:build_atom(first),
-              GetCallBody
-              ])
-          ),
+      GetCall = pt_helpers:build_case(
+        pt_helpers:build_call(TableName, FieldName, [Record]),
+        [pt_helpers:build_clause(
+            pt_helpers:build_atom(undefined), 
+            pt_helpers:build_atom(undefined)),
+         pt_helpers:build_clause(
+            pt_helpers:build_var('ID'),
+            pt_helpers:build_call(texas, find, [
+                pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
+                pt_helpers:build_atom(Table),
+                pt_helpers:build_atom(first),
+                GetCallBody
+                ])
+            )]
+        ),
+      GetRefClause = pt_helpers:build_clause([Record], GetCall),
       PT_AST2 = pt_helpers:add_function(PT_AST1, export, RealField, GetRefClause),
       RefColClause = pt_helpers:build_clause(
           [pt_helpers:build_atom(Table)],

@@ -9,7 +9,7 @@
   find/4, 
   insert/2, 
   update/3, 
-  delete/2, 
+  delete/3, 
   create_table/2,
   create_table/3,
   drop_table/2,
@@ -175,20 +175,23 @@ update(Table, UpdateData, Record) ->
   RealUpdateData = lists:filter(fun({_, Value}) ->
           Value =/= undefined
       end, Data:to_keylist()),
-  Result = case RealUpdateData of
-    [] -> Record;
+  Results = case RealUpdateData of
+    [] -> [Record];
     _ -> call(Record, update, [Table, Record, RealUpdateData])
   end,
   _ = case Table:'-habtm'() of
     [] -> ok;
-    _ -> lists:foreach(fun({Field, Ref}) ->
-            _ = case lists:keyfind(Field, 1, UpdateData) of 
-              {Field, Datas} -> update_habtm(Record, Table, Result:id(), Ref, Datas);
-              false -> ok
-            end
-        end, Table:'-habtm'())
+    _ -> 
+      lists:foreach(fun(Result) ->
+            lists:foreach(fun({Field, Ref}) ->
+                  _ = case lists:keyfind(Field, 1, UpdateData) of 
+                    {Field, Datas} -> update_habtm(Record, Table, Result:id(), Ref, Datas);
+                    false -> ok
+                  end
+              end, Table:'-habtm'())
+        end, Results)
   end,
-  Result.
+  Results.
 update_habtm(Conn, From, FromID, To, ToRecords) ->
   delete_habtm(Conn, From, FromID, To),
   lists:foreach(fun(ToRecord) ->
@@ -198,8 +201,12 @@ delete_habtm(Conn, From, FromID, To) ->
   call(Conn, delete, [texas_sql:get_habtm_table(From, To), [{habtm_rowid(From), FromID}]]).
 
 % @hidden
--spec delete(table(), data()) -> any().
-delete(Table, Record) ->
+-spec delete(atom(), table(), data()) -> any().
+delete(Type, Table, Record) ->
+  _ = case Type of
+    recursive -> todo;
+    _ -> ok
+  end,
   Result = call(Record, delete, [Table, Record]),
   lists:foreach(fun({_, Ref}) ->
         delete_habtm(Record, Table, Record:id(), Ref)
