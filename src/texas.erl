@@ -203,10 +203,18 @@ delete_habtm(Conn, From, FromID, To) ->
 % @hidden
 -spec delete(atom(), table(), data()) -> any().
 delete(Type, Table, Record) ->
-  _ = case Type of
-    recursive -> todo;
-    _ -> ok
-  end,
+  lists:foreach(fun({Field, Relation, RefTable}) ->
+        _ = case Relation of
+          habtm -> ok;
+          _ -> 
+            lists:foreach(fun(Ref) ->
+                  case Type of
+                    recursive -> Ref:delete(recursive);
+                    _ -> Ref:update([{RefTable:'-belongs_to_ref'(Table), null}])
+                  end
+              end, Record:Field())
+        end
+    end, Table:'-has'()),
   Result = call(Record, delete, [Table, Record]),
   lists:foreach(fun({_, Ref}) ->
         delete_habtm(Record, Table, Record:id(), Ref)

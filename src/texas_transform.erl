@@ -423,7 +423,11 @@ build_belongs_to_function(PT_AST, TableName, {FieldName, Desc}) ->
       RefColClause = pt_helpers:build_clause(
           [pt_helpers:build_atom(Table)],
           pt_helpers:build_atom(FieldName)),
-      pt_helpers:add_function(PT_AST2, export, '-ref_col', RefColClause)
+      PT_AST3 = pt_helpers:add_function(PT_AST2, export, '-ref_col', RefColClause),
+      BelongsToRefClause = pt_helpers:build_clause(
+          [pt_helpers:build_atom(Table)],
+          pt_helpers:build_atom(RealField)),
+      pt_helpers:add_function(PT_AST3, export, '-belongs_to_ref', BelongsToRefClause)
   end.
 
 build_common_function(PT_AST, Fields, Option, Default) ->

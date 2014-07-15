@@ -124,5 +124,7 @@ run_tests(Conn) ->
   UsersForDevice5 = Device5:users(),
   io:format("UsersForDevice5 -> ~p~n", [lists:map(fun(U) -> U:to_keylist() end, UsersForDevice5)]),
 
-  User14:delete().
+  User14:delete(),
+
+  Address4:delete(recursive).
 
