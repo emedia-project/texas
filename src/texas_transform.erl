@@ -6,7 +6,8 @@ parse_transform(AST, Options) ->
   pt_helpers:transform(fun build/1, AST, Options).
 
 build(PT_AST) ->
-  Fields = update_fields(pt_helpers:fields(PT_AST)),
+  Fields = update_fields(pt_helpers:fields(PT_AST)) ++ 
+           add_timestamps(PT_AST),
   TableName = pt_helpers:module_name(PT_AST),
   io:format("Generate module for table ~s~n", [TableName]),
   PT_AST1 = build_record(PT_AST, TableName, Fields),
@@ -35,6 +36,16 @@ update_fields(Fields) ->
              merge_keylists(1, Options, [{type, id}])}
         end
     end, Fields).
+
+add_timestamps(PT_AST) ->
+  case pt_helpers:directive(PT_AST, timestamps) of
+    [true] -> [
+        {created_at, [{type, datetime}, {default, now}]},
+        {updated_at, [{type, datetime}, {default, now}]}
+        ];
+    _ -> 
+      []
+  end.
 
 build_record(PT_AST, TableName, Fields) ->
   FieldsDef = lists:foldl(fun({Name, Options}, Acc) ->

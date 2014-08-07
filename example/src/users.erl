@@ -16,6 +16,7 @@
 -field({title,      [{type, string},  {len, 32},            {not_null, true}, {default, "M."} ]}).
 -field({live_at,    [                 {belongs_to, address}                                   ]}).
 -field({devices,    [                 {habtm, device}                                         ]}).
+-timestamps(true).
 
 -index([id, name, mail]).
 

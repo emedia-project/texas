@@ -3,3 +3,4 @@
 
 -field({key, [{type, string}]}).
 -field({value, [{type, string}]}).
+-timestamps(true).
