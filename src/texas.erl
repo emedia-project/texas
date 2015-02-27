@@ -43,8 +43,7 @@
 
 -spec start() -> ok | {ok, connection()} | {error, any()}.
 start() ->
-  {ok, _} = application:ensure_all_started(lager),
-  ok = application:ensure_started(texas),
+  {ok, _} = application:ensure_all_started(texas),
   case get_value(autoconnect, false) of
     true -> case get_value(uri, undefined) of
         undefined -> ok;
