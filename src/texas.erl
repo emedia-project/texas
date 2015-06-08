@@ -3,13 +3,13 @@
 -export([start/0]).
 -export([
   connect/0,
-  connect/1, 
-  connect/2, 
-  close/1, 
-  find/4, 
-  insert/2, 
-  update/3, 
-  delete/3, 
+  connect/1,
+  connect/2,
+  close/1,
+  find/4,
+  insert/2,
+  update/3,
+  delete/3,
   create_table/2,
   create_table/3,
   drop_table/2,
@@ -65,31 +65,37 @@ connect() ->
     URI -> connect(URI)
   end.
 -spec connect(connection_string()) -> connection() | {error, any()}.
-connect(URI) -> 
+connect(URI) ->
   connect(URI, []).
 -spec connect(connection_string(), [tuple()]) -> connection() | {error, any()}.
-connect(URI, Options) -> 
+connect(URI, Options) ->
   case texas_uri:parse(URI) of
-    {ok, {Scheme, User, Password, Server, Port, Path, _, _}} ->
+    {ok, {Scheme, User, Password, Server, Port, Path, Params, Fragment}} ->
       Module = list_to_atom("texas_" ++ Scheme),
       case erlang:apply(Module, start, []) of
         ok ->
-          case erlang:apply(Module, connect, [
-                User, Password, Server, Port, Path, Options
-                ]) of
-            {ok, Conn} -> 
-              #texas{
-                driver = Scheme,
-                module = Module,
-                user = User,
-                password = Password,
-                server = Server,
-                port = Port,
-                database = Path,
-                connection_string = URI,
-                conn = Conn
-                };
-            _ -> {error, connection_failed}
+          case code:ensure_loaded(Module) of
+            {module, Module} ->
+              case get_conn(Module, User,
+                            Password, Server,
+                            Port, Path,
+                            Options, Params, Fragment) of
+                {ok, Conn} ->
+                  #texas{
+                     driver = Scheme,
+                     module = Module,
+                     user = User,
+                     password = Password,
+                     server = Server,
+                     port = Port,
+                     database = Path,
+                     connection_string = URI,
+                     conn = Conn
+                    };
+                _ -> {error, connection_failed}
+              end;
+            _ ->
+              {error, driver_not_found}
           end;
         _ -> {error, load_driver_faild}
       end;
@@ -133,7 +139,7 @@ drop_table(Conn, Table) ->
             true -> ok;
             false -> error
           end;
-        false -> 
+        false ->
           ok
       end;
     E -> E
@@ -157,7 +163,7 @@ find(Conn, Table, Type, Clause) ->
 insert(Table, Record) ->
   Result = call(Record, insert, [Table, Record]),
   lists:foreach(fun({Field, Ref}) ->
-        _ = case Record:Field() of 
+        _ = case Record:Field() of
           undefined -> ok;
           Refs -> lists:foreach(fun(RefData) -> insert_habtm(Record, Table, Result:id(), Ref, RefData:id()) end, Refs)
         end
@@ -180,10 +186,10 @@ update(Table, UpdateData, Record) ->
   end,
   _ = case Table:'-habtm'() of
     [] -> ok;
-    _ -> 
+    _ ->
       lists:foreach(fun(Result) ->
             lists:foreach(fun({Field, Ref}) ->
-                  _ = case lists:keyfind(Field, 1, UpdateData) of 
+                  _ = case lists:keyfind(Field, 1, UpdateData) of
                     {Field, Datas} -> update_habtm(Record, Table, Result:id(), Ref, Datas);
                     false -> ok
                   end
@@ -205,7 +211,7 @@ delete(Type, Table, Record) ->
   lists:foreach(fun({Field, Relation, RefTable}) ->
         _ = case Relation of
           habtm -> ok;
-          _ -> 
+          _ ->
             lists:foreach(fun(Ref) ->
                   case Type of
                     recursive -> Ref:delete(recursive);
@@ -229,13 +235,13 @@ close(Conn) ->
 
 % @hidden
 -spec connection(connection() | data()) -> any().
-connection(Conn) when is_record(Conn, texas) -> 
+connection(Conn) when is_record(Conn, texas) ->
   Conn#texas.conn;
 connection(Conn) ->
   connection(Conn:'-conn'()).
 
 -spec driver(connection() | data()) -> atom().
-driver(Conn) when is_record(Conn, texas) -> 
+driver(Conn) when is_record(Conn, texas) ->
   Conn#texas.driver;
 driver(Conn) ->
   driver(Conn:'-conn'()).
@@ -275,7 +281,7 @@ drop_habtm_table(Conn, Mod1, Mod2) ->
 get_habtm_data(Conn, From, To, FromID) ->
   case FromID of
     undefined -> undefined;
-    _ -> 
+    _ ->
       JoinTableName = texas_sql:get_habtm_table(From, To),
       JoinResults = call(Conn, select, [JoinTableName, all, [{where, [{habtm_rowid(From), FromID}]}]]),
       lists:foldl(fun(Join, Result) ->
@@ -297,4 +303,17 @@ get_value(Key, Default) ->
   case application:get_env(texas, Key) of
     {ok, Value} -> Value;
     _ -> Default
+  end.
+
+get_conn(Module, User, Password, Server, Port, Path, Options, Params, Fragment) ->
+  case erlang:function_exported(Module, connect, 8) of
+    true ->
+      erlang:apply(Module, connect, [User, Password, Server, Port, Path, Options, Params, Fragment]);
+    false ->
+      case erlang:function_exported(Module, connect, 6) of
+        true ->
+          erlang:apply(Module, connect, [User, Password, Server, Port, Path, Options]);
+        false ->
+          error
+      end
   end.
