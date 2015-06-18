@@ -68,7 +68,7 @@ to(float, Value) when is_list(Value) ->
 to(float, Value) when is_binary(Value) ->
   to(float, binary_to_list(Value));
 to(float, Value) when is_atom(Value) ->
-  list_to_float(atom_to_list(Value));
+  to(float, atom_to_list(Value));
 % date
 to(date, Value) when is_list(Value) ->
   {Date, _} = edate:parse(Value),
