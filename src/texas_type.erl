@@ -26,9 +26,9 @@ to(string, Value) when is_binary(Value) ->
   binary_to_list(Value);
 to(string, Value) when is_atom(Value) ->
   atom_to_list(Value);
-to(string, {{Y, M, D}, {H, MM, S}} = Date) 
-    when is_integer(Y), 
-    is_integer(M), 
+to(string, {{Y, M, D}, {H, MM, S}} = Date)
+    when is_integer(Y),
+    is_integer(M),
     is_integer(D),
     is_integer(H),
     is_integer(MM),
@@ -47,9 +47,9 @@ to(text, Value) when is_atom(Value) ->
   atom_to_list(Value);
 to(string, {{Y, M, D}, {H, MM, S, _}}) ->
   to(string, {{Y, M, D}, {H, MM, S}});
-to(string, {{Y, M, D}, {H, MM, S}} = Date) 
-    when is_integer(Y), 
-    is_integer(M), 
+to(string, {{Y, M, D}, {H, MM, S}} = Date)
+    when is_integer(Y),
+    is_integer(M),
     is_integer(D),
     is_integer(H),
     is_integer(MM),
@@ -61,9 +61,12 @@ to(float, Value) when is_integer(Value) ->
 to(float, Value) when is_float(Value) ->
   Value;
 to(float, Value) when is_list(Value) ->
-  list_to_float(Value);
+  case string:to_float(Value) of
+    {error, no_float} -> float(list_to_integer(Value));
+    {F, _} -> F
+  end;
 to(float, Value) when is_binary(Value) ->
-  list_to_float(binary_to_list(Value));
+  to(float, binary_to_list(Value));
 to(float, Value) when is_atom(Value) ->
   list_to_float(atom_to_list(Value));
 % date
@@ -76,9 +79,9 @@ to(date, {{Y, M, D}, {H, MM, S, _}}) ->
   to(date, {{Y, M, D}, {H, MM, S}});
 to(date, {Date, _}) ->
   to(date, Date);
-to(date, {Y, M, D} = Date) 
-    when is_integer(Y), 
-    is_integer(M), 
+to(date, {Y, M, D} = Date)
+    when is_integer(Y),
+    is_integer(M),
     is_integer(D) ->
   edate:format("Y-m-d", {Date, {0, 0, 0}});
 % time
@@ -91,7 +94,7 @@ to(time, {{Y, M, D}, {H, MM, S, _}}) ->
   to(time, {{Y, M, D}, {H, MM, S}});
 to(time, {_, Time}) ->
   to(time, Time);
-to(time, {H, MM, S} = Time) 
+to(time, {H, MM, S} = Time)
     when is_integer(H),
     is_integer(MM),
     is_integer(S) ->
@@ -103,15 +106,15 @@ to(datetime, Value) when is_binary(Value) ->
   to(datetime, binary_to_list(Value));
 to(datetime, {{Y, M, D}, {H, MM, S, _}}) ->
   to(datetime, {{Y, M, D}, {H, MM, S}});
-to(datetime, {{Y, M, D}, {H, MM, S}} = Date) 
-    when is_integer(Y), 
-    is_integer(M), 
+to(datetime, {{Y, M, D}, {H, MM, S}} = Date)
+    when is_integer(Y),
+    is_integer(M),
     is_integer(D),
     is_integer(H),
     is_integer(MM),
     is_integer(S) ->
   edate:format("Y-m-d H:i:s", Date);
 % Error
-to(Type, Value) -> 
+to(Type, Value) ->
   lager:error("Can't convert ~p to ~p", [Value, Type]),
   exit(io_lib:format("Can't convert ~p to ~p", [Value, Type])).
