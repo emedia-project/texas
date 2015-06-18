@@ -5,27 +5,9 @@
 % id
 to(id, Value) -> to(integer, Value);
 % integer
-to(integer, Value) when is_integer(Value) ->
-  Value;
-to(integer, Value) when is_float(Value) ->
-  trunc(Value);
-to(integer, Value) when is_list(Value) ->
-  list_to_integer(Value);
-to(integer, Value) when is_binary(Value) ->
-  binary_to_integer(Value);
-to(integer, Value) when is_atom(Value) ->
-  list_to_integer(atom_to_list(Value));
+to(integer, Value) ->
+  eutils:to_integer(Value);
 % string
-to(string, Value) when is_integer(Value) ->
-  integer_to_list(Value);
-to(string, Value) when is_float(Value) ->
-  integer_to_list(trunc(Value));
-to(string, Value) when is_list(Value) ->
-  Value;
-to(string, Value) when is_binary(Value) ->
-  binary_to_list(Value);
-to(string, Value) when is_atom(Value) ->
-  atom_to_list(Value);
 to(string, {{Y, M, D}, {H, MM, S}} = Date)
     when is_integer(Y),
     is_integer(M),
@@ -33,42 +15,15 @@ to(string, {{Y, M, D}, {H, MM, S}} = Date)
     is_integer(H),
     is_integer(MM),
     is_integer(S) ->
-  edate:format("Y-m-d H:i:s", Date);
+  eutils:to_binary(edate:format("Y-m-d H:i:s", Date));
+to(string, Value) ->
+  eutils:to_binary(Value);
 % text
-to(text, Value) when is_integer(Value) ->
-  integer_to_list(Value);
-to(text, Value) when is_float(Value) ->
-  integer_to_list(trunc(Value));
-to(text, Value) when is_list(Value) ->
-  Value;
-to(text, Value) when is_binary(Value) ->
-  binary_to_list(Value);
-to(text, Value) when is_atom(Value) ->
-  atom_to_list(Value);
-to(string, {{Y, M, D}, {H, MM, S, _}}) ->
-  to(string, {{Y, M, D}, {H, MM, S}});
-to(string, {{Y, M, D}, {H, MM, S}} = Date)
-    when is_integer(Y),
-    is_integer(M),
-    is_integer(D),
-    is_integer(H),
-    is_integer(MM),
-    is_integer(S) ->
-  edate:format("Y-m-d H:i:s", Date);
+to(text, Value) ->
+  to(string, Value);
 % float
-to(float, Value) when is_integer(Value) ->
-  float(Value);
-to(float, Value) when is_float(Value) ->
-  Value;
-to(float, Value) when is_list(Value) ->
-  case string:to_float(Value) of
-    {error, no_float} -> float(list_to_integer(Value));
-    {F, _} -> F
-  end;
-to(float, Value) when is_binary(Value) ->
-  to(float, binary_to_list(Value));
-to(float, Value) when is_atom(Value) ->
-  to(float, atom_to_list(Value));
+to(float, Value) ->
+  eutils:to_float(Value);
 % date
 to(date, Value) when is_list(Value) ->
   {Date, _} = edate:parse(Value),
@@ -83,7 +38,7 @@ to(date, {Y, M, D} = Date)
     when is_integer(Y),
     is_integer(M),
     is_integer(D) ->
-  edate:format("Y-m-d", {Date, {0, 0, 0}});
+  eutils:to_binary(edate:format("Y-m-d", {Date, {0, 0, 0}}));
 % time
 to(time, Value) when is_list(Value) ->
   {_, Time} = edate:parse(Value),
@@ -98,7 +53,7 @@ to(time, {H, MM, S} = Time)
     when is_integer(H),
     is_integer(MM),
     is_integer(S) ->
-  edate:format("H:i:s", {{0, 0, 0}, Time});
+  eutils:to_binary(edate:format("H:i:s", {{0, 0, 0}, Time}));
 % datetime
 to(datetime, Value) when is_list(Value) ->
   to(datetime, edate:parse(Value));
@@ -113,7 +68,7 @@ to(datetime, {{Y, M, D}, {H, MM, S}} = Date)
     is_integer(H),
     is_integer(MM),
     is_integer(S) ->
-  edate:format("Y-m-d H:i:s", Date);
+  eutils:to_binary(edate:format("Y-m-d H:i:s", Date));
 % Error
 to(Type, Value) ->
   lager:error("Can't convert ~p to ~p", [Value, Type]),

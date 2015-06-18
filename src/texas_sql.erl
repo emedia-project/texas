@@ -22,16 +22,16 @@ insert_clause(Data, Driver) when is_list(Data) ->
   insert_clause(Data, Driver, "", "", "");
 insert_clause(Record, Driver) when is_tuple(Record)->
   insert_clause(record_to_keylist(Record), Driver).
-insert_clause([], _, _, KeyList, ValueList) -> 
+insert_clause([], _, _, KeyList, ValueList) ->
   " (" ++ KeyList ++ ") VALUES (" ++ ValueList ++ ")";
 insert_clause([{Key, Value}|Rest], Driver, Separator, KeyList, ValueList) ->
   insert_clause(
     Rest, Driver, ", ",
     io_lib:format("~s~s~s", [
-        KeyList, Separator, 
+        KeyList, Separator,
         sql_field(Key, Driver)]),
     io_lib:format("~s~s~s", [
-        ValueList, Separator, 
+        ValueList, Separator,
         sql_string(Value, Driver)])).
 
 where_clause([], _) -> "";
@@ -55,6 +55,8 @@ set_clause(Data, Driver) when is_list(Data) ->
 set_clause(Record, Driver) when is_tuple(Record) ->
   set_clause(record_to_keylist(Record), Driver).
 
+sql_string(Value, Driver) when is_binary(Value); is_bitstring(Value) ->
+  sql_string(eutils:to_string(Value), Driver);
 sql_string(Value, Driver) when is_list(Value) ->
   quote(Value, Driver:string_separator(), Driver:string_quote());
 sql_string(Value, _) ->
@@ -115,7 +117,7 @@ get_habtm_table(Mod1, Mod2) ->
   list_to_atom(
     string:join(
       lists:sort([
-          atom_to_list(Mod1), 
+          atom_to_list(Mod1),
           atom_to_list(Mod2)
           ]), "_to_")).
 
@@ -125,11 +127,11 @@ kv_clause([], _, _, _, _, Result) -> Result;
 kv_clause([Entry|Rest], Driver, SetOpFun, CurrentSeparator, NextSeparator, Result) ->
   case Entry of
     {Key, Value} -> kv_clause([{Key, "=", Value}|Rest], Driver, SetOpFun, CurrentSeparator, NextSeparator, Result);
-    {Key, Operator, Value} -> 
+    {Key, Operator, Value} ->
       kv_clause(
         Rest, Driver, SetOpFun, NextSeparator, NextSeparator,
         io_lib:format("~s~s~s", [
-            Result, CurrentSeparator, 
+            Result, CurrentSeparator,
             SetOpFun(Key, Operator, Value, Driver)]));
     _ -> error({error, invalide_clause_data})
   end.
