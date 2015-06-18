@@ -6,6 +6,7 @@
   connect/1,
   connect/2,
   close/1,
+  count/3,
   find/4,
   insert/2,
   update/3,
@@ -152,6 +153,11 @@ drop_table(Conn, Table) ->
 create_table(Conn, Table, Fields) ->
   lager:debug("== Create table ~p ==", [Table]),
   call(Conn, create_table, [Table, Fields]).
+
+% @hidden
+-spec count(connection(), table(), clause()) -> integer().
+count(Conn, Table, Clause) ->
+  call(Conn, count, [Table, Clause]).
 
 % @hidden
 -spec find(connection(), table(), type(), clause()) -> data() | [data()].

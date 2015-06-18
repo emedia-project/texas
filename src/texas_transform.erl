@@ -6,7 +6,7 @@ parse_transform(AST, Options) ->
   pt_helpers:transform(fun build/1, AST, Options).
 
 build(PT_AST) ->
-  Fields = update_fields(pt_helpers:fields(PT_AST)) ++ 
+  Fields = update_fields(pt_helpers:fields(PT_AST)) ++
            add_timestamps(PT_AST),
   TableName = pt_helpers:module_name(PT_AST),
   io:format("Generate module for table ~s~n", [TableName]),
@@ -43,7 +43,7 @@ add_timestamps(PT_AST) ->
         {created_at, [{type, datetime}, {default, now}]},
         {updated_at, [{type, datetime}, {default, now}]}
         ];
-    _ -> 
+    _ ->
       []
   end.
 
@@ -74,7 +74,7 @@ build_common_functions(PT_AST, Fields) ->
 build_type_functions(PT_AST, Fields) ->
   Clauses = lists:foldl(fun({FieldName, Options}, Clauses) ->
         Clauses ++ case lists:keyfind(type, 1, Options) of
-            {type, Value} -> 
+            {type, Value} ->
               [pt_helpers:build_clause(
                   pt_helpers:build_atom(FieldName),
                   pt_helpers:build_value(Value)
@@ -97,7 +97,7 @@ build_fields_function(PT_AST, Fields) ->
 build_new_functions(PT_AST, TableName) ->
   Conn = pt_helpers:build_var('Conn'),
   Clause0 = pt_helpers:build_clause(
-      [Conn], 
+      [Conn],
       pt_helpers:build_record(
         TableName,
         [pt_helpers:build_record_field('__texas_conn', Conn)]
@@ -135,7 +135,7 @@ build_get_functions(PT_AST, TableName, Fields) ->
           _ -> PT_AST1
         end
     end, PT_AST, Fields).
-  
+
 build_set_functions(PT_AST, TableName, Fields) ->
   lists:foldl(fun({FieldName, Options}, PT_AST1) ->
         case lists:keyfind(type, 1, Options) of
@@ -176,6 +176,15 @@ build_crud_functions(PT_AST, TableName) ->
   Record = pt_helpers:build_var('Rec'),
   Arg1 = pt_helpers:build_var('Type'),
   Arg2 = pt_helpers:build_var('Clause'),
+  CountClause = pt_helpers:build_clause(
+      [Conn, Arg2],
+      pt_helpers:build_call(texas, count, [
+          Conn,
+          Table,
+          Arg2
+          ])
+      ),
+  PT_AST1 = pt_helpers:add_function(PT_AST, export, count, CountClause),
   FindClause = pt_helpers:build_clause(
       [Conn, Arg1, Arg2],
       pt_helpers:build_call(texas, find, [
@@ -185,7 +194,7 @@ build_crud_functions(PT_AST, TableName) ->
           Arg2
           ])
       ),
-  PT_AST1 = pt_helpers:add_function(PT_AST, export, find, FindClause),
+  PT_AST2 = pt_helpers:add_function(PT_AST1, export, find, FindClause),
   InsertClause = pt_helpers:build_clause(
       [Record],
       pt_helpers:build_call(texas, insert, [
@@ -193,7 +202,7 @@ build_crud_functions(PT_AST, TableName) ->
           Record
           ])
       ),
-  PT_AST2 = pt_helpers:add_function(PT_AST1, export, insert, InsertClause),
+  PT_AST3 = pt_helpers:add_function(PT_AST2, export, insert, InsertClause),
   UpdateClause = pt_helpers:build_clause(
       [Arg1, Record],
       pt_helpers:build_call(texas, update, [
@@ -202,7 +211,7 @@ build_crud_functions(PT_AST, TableName) ->
           Record
           ])
       ),
-  PT_AST3 = pt_helpers:add_function(PT_AST2, export, update, UpdateClause),
+  PT_AST4 = pt_helpers:add_function(PT_AST3, export, update, UpdateClause),
   DeleteClauseDefault = pt_helpers:build_clause(
       [Record],
       pt_helpers:build_call(texas, delete, [
@@ -211,7 +220,7 @@ build_crud_functions(PT_AST, TableName) ->
           Record
           ])
       ),
-  PT_AST4 = pt_helpers:add_function(PT_AST3, export, delete, DeleteClauseDefault),
+  PT_AST5 = pt_helpers:add_function(PT_AST4, export, delete, DeleteClauseDefault),
   DeleteClause = pt_helpers:build_clause(
       [Arg1, Record],
       pt_helpers:build_call(texas, delete, [
@@ -220,7 +229,7 @@ build_crud_functions(PT_AST, TableName) ->
           Record
           ])
       ),
-  pt_helpers:add_function(PT_AST4, export, delete, DeleteClause).
+  pt_helpers:add_function(PT_AST5, export, delete, DeleteClause).
 
 build_tablepkid_function(PT_AST, Fields) ->
   IDS = lists:filter(fun({_, Desc}) ->
@@ -229,18 +238,18 @@ build_tablepkid_function(PT_AST, Fields) ->
     end, Fields),
   Resp = case length(IDS) of
     0 -> {none, null};
-    1 -> 
+    1 ->
       [{ID, _}] = IDS,
       {ok, ID};
     _ -> throw("Wrong table definition : multiple autoincrement ids")
   end,
   pt_helpers:add_function(
-    PT_AST, export, '-table_pk_id', 
+    PT_AST, export, '-table_pk_id',
     pt_helpers:build_clause([], pt_helpers:build_tuple(Resp))).
 
 build_indexes_function(PT_AST) ->
   pt_helpers:add_function(
-    PT_AST, export, '-indexes', 
+    PT_AST, export, '-indexes',
     pt_helpers:build_clause([], pt_helpers:build_list(
         pt_helpers:directive(PT_AST, index)))).
 
@@ -258,10 +267,10 @@ build_belongs_to_functions(PT_AST, TableName, Fields) ->
 build_has_functions(PT_AST, TableName, Fields) ->
   {PT_AST2, HABTM1, Has1} = lists:foldl(fun({Field, Options}, {PT_AST1, HABTM, Has}) ->
           case lists:keyfind(has_one, 1, Options) of
-            {has_one, Ref} -> 
+            {has_one, Ref} ->
               {build_has_one_function(Field, Ref, TableName, PT_AST1), HABTM, Has ++ [{Field, has_one, Ref}]};
             _ -> case lists:keyfind(has_many, 1, Options) of
-                {has_many, Ref} -> 
+                {has_many, Ref} ->
                   {build_has_many_function(Field, Ref, TableName, PT_AST1), HABTM, Has ++ [{Field, has_many, Ref}]};
                 _ -> case lists:keyfind(habtm, 1, Options) of
                     {habtm, Ref} ->
@@ -292,7 +301,7 @@ build_conn_function(PT_AST, TableName) ->
       pt_helpers:build_get_record_field(Record, TableName, '__texas_conn')),
   pt_helpers:add_function(PT_AST, export, '-conn', ConnClause).
 
-%% - 
+%% -
 
 build_has_one_function(Field, Ref, TableName, PT_AST) ->
   build_has_one_or_many_function(Field, Ref, TableName, PT_AST, first).
@@ -331,13 +340,13 @@ build_habtm_function(Field, Ref, TableName, PT_AST) ->
       pt_helpers:build_case(
         pt_helpers:build_get_record_field('Record', TableName, list_to_atom(atom_to_list(Ref) ++ "_habtm")),
         [pt_helpers:build_clause(
-            pt_helpers:build_atom(undefined), 
+            pt_helpers:build_atom(undefined),
             pt_helpers:build_call(
               texas,
               get_habtm_data,
               [pt_helpers:build_get_record_field(Record, TableName, '__texas_conn'),
-               pt_helpers:build_atom(TableName), 
-               pt_helpers:build_atom(Ref), 
+               pt_helpers:build_atom(TableName),
+               pt_helpers:build_atom(Ref),
                pt_helpers:build_get_record_field('Record', TableName, id)])),
          pt_helpers:build_clause(
             pt_helpers:build_var('X'),
@@ -348,7 +357,7 @@ build_habtm_function(Field, Ref, TableName, PT_AST) ->
   SetClause = pt_helpers:build_clause(
       [pt_helpers:build_var('Data'), Record],
       pt_helpers:build_record('Record', TableName, [
-          pt_helpers:build_record_field(list_to_atom(atom_to_list(Ref) ++ "_habtm"), 
+          pt_helpers:build_record_field(list_to_atom(atom_to_list(Ref) ++ "_habtm"),
                                         pt_helpers:build_var('Data'))])),
   pt_helpers:add_function(PT_AST1, export, Field, SetClause).
 
@@ -368,15 +377,15 @@ build_has_list_function(Has, PT_AST) ->
 build_belongs_to_function(PT_AST, TableName, {FieldName, Desc}) ->
   case lists:keyfind(belongs_to, 1, Desc) of
     false -> PT_AST;
-    {belongs_to, Table} -> 
+    {belongs_to, Table} ->
       ["id"|Rest] = lists:reverse(string:tokens(atom_to_list(FieldName), "_")),
       RealField = list_to_atom(string:join(lists:reverse(Rest), "_")),
       Record = pt_helpers:build_var('Rec'),
       Ref = pt_helpers:build_var('Ref'),
       SetRefGuard = pt_helpers:build_guard(
           pt_helpers:build_op(
-            '=:=', 
-            pt_helpers:build_call(element, [pt_helpers:build_integer(1), Ref]), 
+            '=:=',
+            pt_helpers:build_call(element, [pt_helpers:build_integer(1), Ref]),
             pt_helpers:build_atom(Table))
           ),
       SetRefClause = pt_helpers:build_clause(
@@ -417,7 +426,7 @@ build_belongs_to_function(PT_AST, TableName, {FieldName, Desc}) ->
       GetCall = pt_helpers:build_case(
         pt_helpers:build_call(TableName, FieldName, [Record]),
         [pt_helpers:build_clause(
-            pt_helpers:build_atom(undefined), 
+            pt_helpers:build_atom(undefined),
             pt_helpers:build_atom(undefined)),
          pt_helpers:build_clause(
             pt_helpers:build_var('ID'),
@@ -470,7 +479,7 @@ build_common_clauses(Fields, Option, Default) ->
 %% @end
 merge_keylists(_, [], TupleList2) ->
   TupleList2;
-merge_keylists(N, [Tuple|Rest], TupleList2) when 
+merge_keylists(N, [Tuple|Rest], TupleList2) when
     is_integer(N), is_list(TupleList2), is_tuple(Tuple), is_list(Rest) ->
   Key = element(N, Tuple),
   TupleList3 = case lists:keysearch(Key, N, TupleList2) of

@@ -26,7 +26,7 @@ auto() ->
   texas:start(),
   case texas:connect() of
     {error, E} -> io:format("connection error : ~p~n", [E]);
-    Conn -> 
+    Conn ->
       run_tests(Conn),
       texas:close(Conn)
   end.
@@ -45,14 +45,16 @@ run_tests(Conn) ->
   User1 = User:title("Monsieur"),
   User2 = User1:insert(),
   io:format("User2 -> ~p~n", [User2:to_keylist()]),
-  
+
   Pipo = pipo:new(Conn, [{key, "Hello"}, {value, "World"}]),
   Pipo1 = Pipo:insert(),
   io:format("Pipo1 -> ~p~n", [Pipo1:to_keylist()]),
+  io:format("Count pipo = ~p~n", [pipo:count(Conn, [])]),
 
   Pipo2 = pipo:new(Conn, [{key, "Hola"}, {value, "Mundo"}]),
   Pipo3 = Pipo2:insert(),
   io:format("Pipo3 -> ~p~n", [Pipo3:to_keylist()]),
+  io:format("Count pipo = ~p~n", [pipo:count(Conn, [])]),
 
   UserA = users:new(Conn, [{name, "Mu"}, {mail, "moger@example.com"}]),
   UserB = UserA:title("Madame"),
