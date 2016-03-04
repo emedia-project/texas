@@ -47,13 +47,10 @@
 start() ->
   {ok, _} = application:ensure_all_started(texas),
   case doteki:get_env([texas, autoconnect], false) of
-    true -> case doteki:get_env([texas, uri], undefined) of
-        undefined -> ok;
-        URI -> case connect(URI) of
-            {error, E} -> {error, E};
-            Conn -> {ok, Conn}
-          end
-      end;
+    true -> case connect() of
+              {error, E} -> {error, E};
+              Conn -> {ok, Conn}
+            end;
     _ -> ok
   end.
 

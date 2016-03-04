@@ -11,9 +11,6 @@ dep_texas_pgsql = git https://github.com/emedia-project/texas_pgsql.git master
 
 include ../erlang.mk
 
-app::
-	make -C ..
-
 dev:
 	rm -rf sample.db
 	@erl -pa ebin include deps/*/ebin deps/*/include -config config/sys.config
