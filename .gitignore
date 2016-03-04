@@ -4,7 +4,6 @@ ebin
 *.beam
 erl_crash.dump
 .eunit
-doc
 log
 *.db
 *.d

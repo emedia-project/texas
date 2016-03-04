@@ -1,4 +1,3 @@
-% @hidden
 -module(texas).
 -compile([{parse_transform, lager_transform}]).
 
