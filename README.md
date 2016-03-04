@@ -15,9 +15,11 @@ A simple ORM for Erlang
 
 To use `texas` in you application, just add the following line in your `rebar.config` file :
 
-`
+```
+
 {texas, ".*", {git, "https://github.com/emedia-project/texas", "master"}},
-`
+
+```
 
 
 ## Drivers ##
@@ -36,15 +38,19 @@ You also need a *driver* :
 
 With `texas` a table is defined as an Erlang module. The name of the table is the name of the module.
 
-`
+```
+
 -module(my_table).
-`
+
+```
 
 To generate the table, you __must__ use the `texas_transform` parser. To do so, just add the following line under the module declaration :
 
-`
+```
+
 -compile([{parse_transform, texas_transform}]).
-`
+
+```
 
 Then you define the columns using `-field`. This directive takes a tuple of two elements. The first element is an atom corresponding to the name of the column. The second element is a key list accepting the following options :
 
@@ -61,10 +67,12 @@ Then you define the columns using `-field`. This directive takes a tuple of two 
 * `{default, Def}` where `Def` = `item()` (default: `null`)
 
 
-`
+```
+
 -field({id,   [{type, integer}, {autoincrement, true}]}).
 -field({name, [{type, string},  {len, 128}           ]}).
-`
+
+```
 
 
 ## Associations ##
@@ -78,25 +86,29 @@ Each table involved in an associations __must have__ a column `id` !!!
 
 `accounts.erl` :
 
-`
+```
+
 -module(accounts).
 -compile([{parse_transform, texas_transform}]).
 
 -field({id,             [{type, integer}, {autoincrement, true}]}).
 -field({account_number, [{type, string},  {len, 255}           ]}).
 -field({supplier,       [{belongs_to, suppliers}               ]}).
-`
+
+```
 
 `suppliers.erl` :
 
-`
+```
+
 -module(suppliers).
 -compile([{parse_transform, texas_transform}]).
 
 -field({id,             [{type, integer}, {autoincrement, true}]}).
 -field({name,           [{type, string},  {len, 255}           ]}).
 -field({account,        [{has_one, accounts}                   ]}).
-`
+
+```
 
 
 ### has_many ###
@@ -105,25 +117,29 @@ Each table involved in an associations __must have__ a column `id` !!!
 
 `orders.erl` :
 
-`
+```
+
 -module(orders).
 -compile([{parse_transform, texas_transform}]).
 
 -field({id,             [{type, integer}, {autoincrement, true}]}).
 -field({order_date,     [{type, string},  {len, 255}           ]}).
 -field({customer,       [{belongs_to, customers}               ]}).
-`
+
+```
 
 `customers.erl` :
 
-`
+```
+
 -module(customers).
 -compile([{parse_transform, texas_transform}]).
 
 -field({id,             [{type, integer}, {autoincrement, true}]}).
 -field({name,           [{type, string},  {len, 255}           ]}).
 -field({orders,         [{has_many, orders}                    ]}).
-`
+
+```
 
 
 ### habtm ###
@@ -132,25 +148,29 @@ Each table involved in an associations __must have__ a column `id` !!!
 
 `parts.erl` :
 
-`
+```
+
 -module(parts).
 -compile([{parse_transform, texas_transform}]).
 
 -field({id,             [{type, integer}, {autoincrement, true}]}).
 -field({part_number,    [{type, string},  {len, 255}           ]}).
 -field({assemblies,     [{habtm, assemblies}                   ]}).
-`
+
+```
 
 `assemblies.erl` :
 
-`
+```
+
 -module(assemblies).
 -compile([{parse_transform, texas_transform}]).
 
 -field({id,             [{type, integer}, {autoincrement, true}]}).
 -field({name,           [{type, string},  {len, 255}           ]}).
 -field({parts,          [{habtm, parts}                        ]}).
-`
+
+```
 
 
 ## Configuration ##
@@ -173,7 +193,8 @@ The config file accept the following `texas` options :
 
 Here is a configuration example:
 
-`
+```
+
 [
   {texas, [
     {uri, "sqlite:///sample.db"},
@@ -181,7 +202,8 @@ Here is a configuration example:
     {tables, [address, device, pipo, users]}
   ]}
 ].
-`
+
+```
 
 
 ## Create tables ##
@@ -195,32 +217,41 @@ You can create table using the `texas:create_table/2` function. This fonction ta
 
 If you have a configuration file, you can create your tables with rebar. To do so, ensure that's all your tables are referenced in the list of the `tables` option. Add the `texas_rebar` plugin in your `rebar.config`  :
 
-`
+```
+
 {plugins, [texas_rebar]}.
-`
+
+```
 
 Finally, run
 
-`
+```
+
 rebar db-create
-`
+
+```
 
 The `texas_rebar` plugin assume that's your configuration file is `config/sys.config`. If not, you can specify the path to the config file, using the `texas` option :
 
-`
+```
+
 rebar db-create texas=path/to/my.config
-`
+
+```
 
 You can also drop tables with rebar, using the `db-drop` command :
 
-`
+```
+
 rebar db-drop [texas=path/to/my.config]
-`
+
+```
 
 
 ## Usage ##
 
-`
+```
+
 texas:start(),
 
 % Initialize connection
@@ -250,7 +281,8 @@ Person4 = Person3:update([{name, "Bob"]]),
 
 % Delete
 ok = Person4:delete().
-`
+
+```
 
 
 ## Licence ##
