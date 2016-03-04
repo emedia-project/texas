@@ -1,29 +1,10 @@
 -module(test).
 
 -export([
-  sqlite/0,
-  mysql/2,
-  pgsql/2,
-  auto/0
+  main/0
 ]).
 
-sqlite() ->
-  main("sqlite:///sample.db").
-
-mysql(DBUser, Pass) ->
-  main("mysql://" ++ DBUser ++ ":" ++ Pass ++ "@localhost:3306/texas").
-
-pgsql(DBUser, Pass) ->
-  main("pgsql://" ++ DBUser ++ ":" ++ Pass ++ "@localhost:5432/texas").
-
-main(URI) ->
-  texas:start(),
-  Conn = texas:connect(URI),
-  run_tests(Conn),
-  texas:close(Conn).
-
-auto() ->
-  texas:start(),
+main() ->
   case texas:connect() of
     {error, E} -> io:format("connection error : ~p~n", [E]);
     Conn ->

@@ -1,8 +1,9 @@
 PROJECT = texas
 
-DEPS = lager pt_helpers bucs
+DEPS = lager pt_helpers doteki bucs
 dep_lager = git https://github.com/basho/lager.git master
 dep_pt_helpers = git https://github.com/emedia-project/pt_helpers.git master
+dep_doteki = git https://github.com/botsunit/doteki.git master
 dep_bucs = git https://github.com/botsunit/bucs.git master
 
 DOC_DEPS = edown

@@ -46,8 +46,8 @@
 -spec start() -> ok | {ok, connection()} | {error, any()}.
 start() ->
   {ok, _} = application:ensure_all_started(texas),
-  case get_value(autoconnect, false) of
-    true -> case get_value(uri, undefined) of
+  case doteki:get_env([texas, autoconnect], false) of
+    true -> case doteki:get_env([texas, uri], undefined) of
         undefined -> ok;
         URI -> case connect(URI) of
             {error, E} -> {error, E};
@@ -62,7 +62,8 @@ start() ->
 % @end
 -spec connect() -> connection() | {error, any()}.
 connect() ->
-  case get_value(uri, undefined) of
+  {ok, _} = application:ensure_all_started(texas),
+  case doteki:get_env([texas, uri], undefined) of
     undefined -> {error, autoconnect_faild};
     URI -> connect(URI)
   end.
@@ -305,12 +306,6 @@ get_habtm_data(Conn, From, To, FromID) ->
 -spec habtm_rowid(atom()) -> atom().
 habtm_rowid(Mod) ->
   list_to_atom(atom_to_list(Mod) ++ "_id").
-
-get_value(Key, Default) ->
-  case application:get_env(texas, Key) of
-    {ok, Value} -> Value;
-    _ -> Default
-  end.
 
 get_conn(Module, User, Password, Server, Port, Path, Options, Params, Fragment) ->
   case erlang:function_exported(Module, connect, 8) of
