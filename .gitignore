@@ -7,3 +7,6 @@ erl_crash.dump
 doc
 log
 *.db
+*.d
+.erlang.mk
+*.swp

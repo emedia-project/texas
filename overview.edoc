@@ -1,0 +1,251 @@
+@author Gregoire Lejeune <gregoire.lejeune@free.fr>
+@copyright 2014, 2015, 2016 Gregoire Lejeune
+@version 0.0.1
+@title Texas
+@doc
+
+A simple ORM for Erlang
+
+<h2>Install</h2>
+
+To use <tt>texas</tt> in you application, just add the following line in your <tt>rebar.config</tt> file :
+
+<code>
+{texas, ".*", {git, "https://github.com/emedia-project/texas", "master"}},
+</code>
+
+<h2>Drivers</h2>
+
+You also need a *driver* :
+
+<ul>
+<li>sqlite : https://github.com/emedia-project/texas_sqlite</li>
+<li>PostgreSQL : https://github.com/emedia-project/texas_pgsql</li>
+<li>MySQL : https://github.com/emedia-project/texas_mysql</li>
+</ul>
+
+<h2>Define table</h2>
+
+With <tt>texas</tt> a table is defined as an Erlang module. The name of the table is the name of the module.
+
+<code>
+-module(my_table).
+</code>
+
+To generate the table, you <b>must</b> use the <tt>texas_transform</tt> parser. To do so, just add the following line under the module declaration :
+
+<code>
+-compile([{parse_transform, texas_transform}]).
+</code>
+
+Then you define the columns using <tt>-field</tt>. This directive takes a tuple of two elements. The first element is an atom corresponding to the name of the column. The second element is a key list accepting the following options :
+
+<ul>
+<li><tt>{type, Type}</tt> where <tt>Type</tt> = <tt>integer</tt>|<tt>string</tt>|<tt>float</tt>|<tt>date</tt>|<tt>time</tt>|<tt>datetime</tt></li>
+<li><tt>{autoincrement, Auto}</tt> where <tt>Auto</tt> = <tt>true</tt>|<tt>false</tt> (default: <tt>false</tt>)</li>
+<li><tt>{len, Size}</tt> where <tt>Size</tt> is a number or a tuple (default: <tt>null</tt>)</li>
+<li><tt>{not_null, NN}</tt> where <tt>NN</tt> = <tt>true</tt>|<tt>false</tt> (default: <tt>false</tt>)</li>
+<li><tt>{unique, Uniq}</tt> where <tt>Uniq</tt> = <tt>true</tt>|<tt>false</tt> (default: <tt>false</tt>)</li>
+<li><tt>{default, Def}</tt> where <tt>Def</tt> = <tt>item()</tt> (default: <tt>null</tt>)</li>
+</ul>
+
+<code>
+-field({id,   [{type, integer}, {autoincrement, true}]}).
+-field({name, [{type, string},  {len, 128}           ]}).
+</code>
+
+<h2>Associations</h2>
+
+Each table involved in an associations <b>must have</b> a column <tt>id</tt> !!!
+
+<h3>has_one</h3>
+
+![](has_one.png)
+
+<tt>accounts.erl</tt> :
+
+<code>
+-module(accounts).
+-compile([{parse_transform, texas_transform}]).
+
+-field({id,             [{type, integer}, {autoincrement, true}]}).
+-field({account_number, [{type, string},  {len, 255}           ]}).
+-field({supplier,       [{belongs_to, suppliers}               ]}).
+</code>
+
+<tt>suppliers.erl</tt> :
+
+<code>
+-module(suppliers).
+-compile([{parse_transform, texas_transform}]).
+
+-field({id,             [{type, integer}, {autoincrement, true}]}).
+-field({name,           [{type, string},  {len, 255}           ]}).
+-field({account,        [{has_one, accounts}                   ]}).
+</code>
+
+
+<h3>has_many</h3>
+
+![](has_many.png)
+
+<tt>orders.erl</tt> :
+
+<code>
+-module(orders).
+-compile([{parse_transform, texas_transform}]).
+
+-field({id,             [{type, integer}, {autoincrement, true}]}).
+-field({order_date,     [{type, string},  {len, 255}           ]}).
+-field({customer,       [{belongs_to, customers}               ]}).
+</code>
+
+<tt>customers.erl</tt> :
+
+<code>
+-module(customers).
+-compile([{parse_transform, texas_transform}]).
+
+-field({id,             [{type, integer}, {autoincrement, true}]}).
+-field({name,           [{type, string},  {len, 255}           ]}).
+-field({orders,         [{has_many, orders}                    ]}).
+</code>
+
+<h3>habtm</h3>
+
+![](habtm.png)
+
+<tt>parts.erl</tt> :
+
+<code>
+-module(parts).
+-compile([{parse_transform, texas_transform}]).
+
+-field({id,             [{type, integer}, {autoincrement, true}]}).
+-field({part_number,    [{type, string},  {len, 255}           ]}).
+-field({assemblies,     [{habtm, assemblies}                   ]}).
+</code>
+
+<tt>assemblies.erl</tt> :
+
+<code>
+-module(assemblies).
+-compile([{parse_transform, texas_transform}]).
+
+-field({id,             [{type, integer}, {autoincrement, true}]}).
+-field({name,           [{type, string},  {len, 255}           ]}).
+-field({parts,          [{habtm, parts}                        ]}).
+</code>
+
+<h2>Configuration</h2>
+
+There is two ways to connect to a database :
+
+<ul>
+<li>You can use <tt>texas:connect/1</tt>. This function's parameter is a connection string (<tt>driver://[login[:password]@[server[:port]]/[path][?options]</tt>).</li>
+<li>Or, you can use <tt>texas:connect/0</tt>. In this case, you must add the connections informations in your config file.</li>
+</ul>
+
+The config file accept the following <tt>texas</tt> options :
+
+<ul>
+<li><tt>uri</tt> : give the connection string</li>
+<li><tt>autoconnect</tt> : <tt>true</tt>|<tt>false</tt> - If this option is set to <tt>true</tt> the connection will be automatic on call of <tt>texas:start/0</tt> which will then return <tt>{ok, Conn}</tt> or <tt>{error, Error}</tt>.</li>
+<li><tt>tables</tt> : give a list of tables (see bellow).</li>
+</ul>
+
+Here is a configuration example:
+
+<code>
+[
+  {texas, [
+    {uri, "sqlite:///sample.db"},
+    {autoconnect, true},
+    {tables, [address, device, pipo, users]}
+  ]}
+].
+</code>
+
+<h2>Create tables</h2>
+
+You can create table using the <tt>texas:create_table/2</tt> function. This fonction takes two parameters:
+
+<ul>
+<li>A <tt>connection</tt> (returned by <tt>texas:connect</tt>).</li>
+<li>A table module name.</li>
+</ul>
+
+If you have a configuration file, you can create your tables with rebar. To do so, ensure that's all your tables are referenced in the list of the <tt>tables</tt> option. Add the <tt>texas_rebar</tt> plugin in your <tt>rebar.config</tt>  :
+
+<code>
+{plugins, [texas_rebar]}.
+</code>
+
+Finally, run
+
+<code>
+rebar db-create
+</code>
+
+The <tt>texas_rebar</tt> plugin assume that's your configuration file is <tt>config/sys.config</tt>. If not, you can specify the path to the config file, using the <tt>texas</tt> option :
+
+<code>
+rebar db-create texas=path/to/my.config
+</code>
+
+You can also drop tables with rebar, using the <tt>db-drop</tt> command :
+
+<code>
+rebar db-drop [texas=path/to/my.config]
+</code>
+
+<h2>Usage</h2>
+
+<code>
+texas:start(),
+
+% Initialize connection
+Conn = texas:connect("sqlite:///sample.db"),
+
+% Create tables (if not exist)
+ok = texas:create_table(Conn, person),
+ok = texas:create_table(Conn, address),
+
+% Create a new address
+Address = address:new(Conn, [{street, "21 jump street"}, {city, "New Orleans"}, {zip, "70112"}]).
+Address1 = Address:insert().
+
+% Create a new Person and insert it
+Person = person:new(Conn, [{name, "Greg"}, {mail, "gregoire.lejeune"}]),
+Person1 = Person:address(Address1), 
+Person2 = Person:insert(),
+io:format("person created with ID #~p~n", [Person2:id()]),
+
+% Find
+Person3 = person:find(Conn, first, [{where, [{name, "=", "Greg"}]}]),
+Address2 = Person3:address(),
+PersonsAtAddress = Address2:people(),
+
+% Update
+Person4 = Person3:update([{name, "Bob"]]),
+
+% Delete
+ok = Person4:delete().
+</code>
+
+<h2>Licence</h2>
+
+<p>Copyright (c) 2014, 2015, 2016, Gregoire Lejeune<br />
+All rights reserved.</p>
+
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+
+<ol>
+  <li>Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</li>
+  <li>Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</li>
+</ol>
+
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
+
+@end
+

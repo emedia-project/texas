@@ -1,39 +1,20 @@
-REBAR       = ./rebar
+PROJECT = texas
 
-.PHONY: compile get-deps
+DEPS = lager pt_helpers eutils
+dep_lager = git https://github.com/basho/lager.git master
+dep_pt_helpers = git https://github.com/emedia-project/pt_helpers.git master
+dep_eutils = git https://github.com/emedia-project/eutils.git master
 
-all: compile
+DOC_DEPS = edown
+dep_edown = git https://github.com/uwiger/edown.git master
 
-compile: get-deps
-	@$(REBAR) compile
+include erlang.mk
 
-get-deps:
-	@$(REBAR) get-deps
-	@$(REBAR) check-deps
+EDOC_OPTS = {doclet, edown_doclet} \
+						, {app_default, "http://www.erlang.org/doc/man"} \
+						, {source_path, ["src"]} \
+						, {overview, "overview.edoc"} \
+						, {stylesheet, ""} \
+						, {image, ""} \
+						, {top_level_readme, {"./README.md", "https://github.com/emedia-project/${PROJECT}"}}
 
-clean:
-	@$(REBAR) clean
-	rm -f erl_crash.dump
-
-realclean: clean
-	@$(REBAR) delete-deps
-
-test: get-deps
-	@$(REBAR) skip_deps=true eunit
-
-doc:
-	@mkdir doc
-	@cp _doc/* doc
-	$(REBAR) skip_deps=true doc
-
-dev:
-	@erl -pa ebin include apps/*/ebin apps/*/include deps/*/ebin deps/*/include #-config sys.config
-
-analyze: checkplt
-	@$(REBAR) skip_deps=true dialyze
-
-buildplt:
-	@$(REBAR) skip_deps=true build-plt
-
-checkplt: buildplt
-	@$(REBAR) skip_deps=true check-plt

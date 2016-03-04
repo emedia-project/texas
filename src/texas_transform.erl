@@ -1,3 +1,4 @@
+% @hidden
 -module(texas_transform).
 
 -export([parse_transform/2]).

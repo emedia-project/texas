@@ -1,4 +1,6 @@
+% @hidden
 -module(texas_type).
+-compile([{parse_transform, lager_transform}]).
 
 -export([to/2]).
 

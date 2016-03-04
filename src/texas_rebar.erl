@@ -1,3 +1,4 @@
+% @hidden
 -module(texas_rebar).
 -export([
   'db-create'/2,

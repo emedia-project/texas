@@ -1,3 +1,4 @@
+% @hidden
 -module(texas_uri).
 
 -export([parse/1]).
