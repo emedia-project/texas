@@ -8,7 +8,7 @@
 to(id, Value) -> to(integer, Value);
 % integer
 to(integer, Value) ->
-  eutils:to_integer(Value);
+  bucs:to_integer(Value);
 % string
 to(string, {{Y, M, D}, {H, MM, S}} = Date)
     when is_integer(Y),
@@ -17,18 +17,18 @@ to(string, {{Y, M, D}, {H, MM, S}} = Date)
     is_integer(H),
     is_integer(MM),
     is_integer(S) ->
-  eutils:to_binary(edate:format("Y-m-d H:i:s", Date));
+  bucs:to_binary(bucdate:format("Y-m-d H:i:s", Date));
 to(string, Value) ->
-  eutils:to_binary(Value);
+  bucs:to_binary(Value);
 % text
 to(text, Value) ->
   to(string, Value);
 % float
 to(float, Value) ->
-  eutils:to_float(Value);
+  bucs:to_float(Value);
 % date
 to(date, Value) when is_list(Value) ->
-  {Date, _} = edate:parse(Value),
+  {Date, _} = bucdate:parse(Value),
   to(date, Date);
 to(date, Value) when is_binary(Value) ->
   to(date, binary_to_list(Value));
@@ -40,10 +40,10 @@ to(date, {Y, M, D} = Date)
     when is_integer(Y),
     is_integer(M),
     is_integer(D) ->
-  eutils:to_binary(edate:format("Y-m-d", {Date, {0, 0, 0}}));
+  bucs:to_binary(bucdate:format("Y-m-d", {Date, {0, 0, 0}}));
 % time
 to(time, Value) when is_list(Value) ->
-  {_, Time} = edate:parse(Value),
+  {_, Time} = bucdate:parse(Value),
   to(time, Time);
 to(time, Value) when is_binary(Value) ->
   to(time, binary_to_list(Value));
@@ -55,10 +55,10 @@ to(time, {H, MM, S} = Time)
     when is_integer(H),
     is_integer(MM),
     is_integer(S) ->
-  eutils:to_binary(edate:format("H:i:s", {{0, 0, 0}, Time}));
+  bucs:to_binary(bucdate:format("H:i:s", {{0, 0, 0}, Time}));
 % datetime
 to(datetime, Value) when is_list(Value) ->
-  to(datetime, edate:parse(Value));
+  to(datetime, bucdate:parse(Value));
 to(datetime, Value) when is_binary(Value) ->
   to(datetime, binary_to_list(Value));
 to(datetime, {{Y, M, D}, {H, MM, S, _}}) ->
@@ -70,7 +70,7 @@ to(datetime, {{Y, M, D}, {H, MM, S}} = Date)
     is_integer(H),
     is_integer(MM),
     is_integer(S) ->
-  eutils:to_binary(edate:format("Y-m-d H:i:s", Date));
+  bucs:to_binary(bucdate:format("Y-m-d H:i:s", Date));
 % Error
 to(Type, Value) ->
   lager:error("Can't convert ~p to ~p", [Value, Type]),

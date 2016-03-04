@@ -474,7 +474,7 @@ build_common_clauses(Fields, Option, Default) ->
 %% <pre>
 %% Args = [{a, 1}, {b, 2}],
 %% Default = [{b, 3}, {c, 4}],
-%% elists:merge_keylists(1, Args, Default),
+%% buclists:merge_keylists(1, Args, Default),
 %%   #=> [{c, 4}, {a, 1}, {b, 2}]
 %% </pre>
 %% @end

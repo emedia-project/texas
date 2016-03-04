@@ -57,7 +57,7 @@ set_clause(Record, Driver) when is_tuple(Record) ->
   set_clause(record_to_keylist(Record), Driver).
 
 sql_string(Value, Driver) when is_binary(Value); is_bitstring(Value) ->
-  sql_string(eutils:to_string(Value), Driver);
+  sql_string(bucs:to_string(Value), Driver);
 sql_string(Value, Driver) when is_list(Value) ->
   quote(Value, Driver:string_separator(), Driver:string_quote());
 sql_string(Value, _) ->
