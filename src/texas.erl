@@ -182,12 +182,18 @@ insert_habtm(Conn, From, FromID, To, ToID) ->
 -spec update(table(), data(), data()) -> any().
 update(Table, UpdateData, Record) ->
   Data = Table:new(Record:'-conn'(), UpdateData),
-  RealUpdateData = lists:filter(fun({_, Value}) ->
+  Fields = Data:to_keylist(),
+  RealUpdateData = lists:filter(fun({_ , Value}) ->
           Value =/= undefined
-      end, Data:to_keylist()),
+      end, Fields),
   Results = case RealUpdateData of
     [] -> [Record];
-    _ -> call(Record, update, [Table, Record, RealUpdateData])
+    _ -> 
+      RealUpdateData2 = case buclists:keyufind(updated_at, 1, Fields) of
+        false -> RealUpdateData;
+        _ -> [{ updated_at, texas_type:to(datetime,calendar:local_time()) } | RealUpdateData]
+      end,
+      call(Record, update, [Table, Record, RealUpdateData2])
   end,
   _ = case Table:'-habtm'() of
     [] -> ok;
