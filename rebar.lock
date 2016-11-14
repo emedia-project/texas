@@ -1,0 +1,12 @@
+[{<<"bucs">>,{pkg,<<"bucs">>,<<"1.0.0">>},0},
+ {<<"doteki">>,{pkg,<<"doteki">>,<<"1.0.0">>},0},
+ {<<"goldrush">>,{pkg,<<"goldrush">>,<<"0.1.8">>},1},
+ {<<"lager">>,{pkg,<<"lager">>,<<"3.2.1">>},0},
+ {<<"pt_helpers">>,
+  {git,"https://github.com/emedia-project/pt_helpers.git",
+       {ref,"f642d1379946f4a5dceec269d50701cb097dc2ec"}},
+  0},
+ {<<"texas_adapter">>,
+  {git,"https://github.com/emedia-project/texas_adapter.git",
+       {ref,"25d5d667dc68fb05d6d97d3505934c9bb8399d7d"}},
+  0}].
