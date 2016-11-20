@@ -1,5 +1,5 @@
-%{"bucs": {:hex, :bucs, "1.0.0", "851b1530f29c9a793f336d47d95967cd77388ed414d71e3c0babd9253ba6ae3b", [:rebar3, :mix, :make], []},
-  "doteki": {:hex, :doteki, "1.0.0", "52cfb4e8d92e85464c4434131215fa27d8b13c992ae3fba572c2478ed55d68a2", [:rebar3, :mix, :make], [{:bucs, "~> 1.0.0", [hex: :bucs, optional: false]}]},
+%{"bucs": {:hex, :bucs, "1.0.1", "5ae078ef6e40d688406f64d5b0dfccaeebfe403875a6941f50e34d287fcec3ee", [:rebar3, :mix, :make], []},
+  "doteki": {:hex, :doteki, "1.0.1", "29c8cf04a4b600504eeaba784c289117b7e3d8d28bc03b560e0a7b9411835340", [:rebar3, :mix, :make], [{:bucs, "~> 1.0.1", [hex: :bucs, optional: false]}]},
   "goldrush": {:hex, :goldrush, "0.1.8", "2024ba375ceea47e27ea70e14d2c483b2d8610101b4e852ef7f89163cdb6e649", [:rebar3], []},
   "lager": {:hex, :lager, "3.2.1", "eef4e18b39e4195d37606d9088ea05bf1b745986cf8ec84f01d332456fe88d17", [:rebar3], [{:goldrush, "0.1.8", [hex: :goldrush, optional: false]}]},
   "pt_helpers": {:git, "https://github.com/emedia-project/pt_helpers.git", "f642d1379946f4a5dceec269d50701cb097dc2ec", [branch: "master"]},
