@@ -24,22 +24,28 @@ defmodule Texas.Mixfile do
     [
       {:lager, "~> 3.2.0"},
       {:pt_helpers, git: "https://github.com/emedia-project/pt_helpers.git", branch: "master"},
-      {:doteki, "~> 1.0.1"},
-      {:bucs, "~> 1.0.1"},
+      {:doteki, "~> 1.0.2"},
+      {:bucs, "~> 1.0.2"},
       {:texas_adapter, git: "https://github.com/emedia-project/texas_adapter.git", branch: "master"}    
     ]
   end
 
   defp aliases do
-    [compile: [&pre_compile_hooks/1, "compile", &post_compile_hooks/1]]
+    [compile: &compile_with_hooks/1]
   end
 
-  defp pre_compile_hooks(_) do
+  defp compile_with_hooks(args) do
+    pre_compile_hooks()
+    :ok = Mix.Task.run("compile", args)
+    post_compile_hooks()
+  end
+
+  defp pre_compile_hooks() do
     run_hook_cmd [
     ]
   end
 
-  defp post_compile_hooks(_) do
+  defp post_compile_hooks() do
     run_hook_cmd [
     ]
   end
