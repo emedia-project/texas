@@ -1,6 +1,6 @@
-%{"bucs": {:hex, :bucs, "1.0.3", "039472179330c5702504b547cf4548bc8bc477da00c5bb8b5564f14d3c3ffb10", [:make, :mix, :rebar3], []},
-  "doteki": {:hex, :doteki, "1.0.3", "03dad2fc118aa672853f850bfb13f9ba31c9feb4330e36a4c3c2cd19ca4cce67", [:make, :mix, :rebar3], [{:bucs, "~> 1.0.3", [hex: :bucs, optional: false]}]},
-  "goldrush": {:hex, :goldrush, "0.1.8", "2024ba375ceea47e27ea70e14d2c483b2d8610101b4e852ef7f89163cdb6e649", [:rebar3], []},
-  "lager": {:hex, :lager, "3.2.1", "eef4e18b39e4195d37606d9088ea05bf1b745986cf8ec84f01d332456fe88d17", [:rebar3], [{:goldrush, "0.1.8", [hex: :goldrush, optional: false]}]},
-  "pt_helpers": {:git, "https://github.com/emedia-project/pt_helpers.git", "65ee769401b9b36a0b3699455c49c65d910130ba", [branch: "master"]},
-  "texas_adapter": {:git, "https://github.com/emedia-project/texas_adapter.git", "7ade01a38f6ef6a336ab53b3c3ce7bafe48af9b5", [branch: "master"]}}
+%{"bucs": {:hex, :bucs, "1.0.6", "b0467388b5adaabb4d8726595b7b754a961bfe80f0ccac88f58e1afea32be6d0", [:make, :mix, :rebar3], []},
+  "doteki": {:hex, :doteki, "1.0.5", "1e719dbe540f84ea87c6dc92be4b6f706a42b08067af519de13b6efc27243a49", [:make, :mix, :rebar3], [{:bucs, "~> 1.0.6", [hex: :bucs, optional: false]}]},
+  "goldrush": {:hex, :goldrush, "0.1.9", "f06e5d5f1277da5c413e84d5a2924174182fb108dabb39d5ec548b27424cd106", [:rebar3], []},
+  "lager": {:hex, :lager, "3.2.4", "a6deb74dae7927f46bd13255268308ef03eb206ec784a94eaf7c1c0f3b811615", [:rebar3], [{:goldrush, "0.1.9", [hex: :goldrush, optional: false]}]},
+  "pt_helpers": {:git, "https://github.com/emedia-project/pt_helpers.git", "925bb67cf14d60349bcc9b88bd3288fc5e81148f", [branch: "master"]},
+  "texas_adapter": {:git, "https://github.com/emedia-project/texas_adapter.git", "38e16fc728a8b3db666c8feab3eca206495ba22f", [branch: "master"]}}
