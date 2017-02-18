@@ -54,6 +54,19 @@ start() ->
     _ -> ok
   end.
 
+
+% @doc
+% Finds the suited driver module,
+% from scheme naming, or from texas config.
+% @end
+scheme_to_module(Scheme) ->
+  case doteki:get_env([texas, driver_module], undefined) of 
+    undefined ->
+      list_to_atom("texas_" ++ Scheme);
+    Mapped -> 
+      Mapped
+  end.
+
 % @doc
 % Connect to the database.
 % @end
@@ -71,7 +84,7 @@ connect(URI) ->
 connect(URI, Options) ->
   case texas_uri:parse(URI) of
     {ok, {Scheme, User, Password, Server, Port, Path, Params, Fragment}} ->
-      Module = list_to_atom("texas_" ++ Scheme),
+      Module = scheme_to_module(Scheme),
       case erlang:apply(Module, start, []) of
         ok ->
           case code:ensure_loaded(Module) of
